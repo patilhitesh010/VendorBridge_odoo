@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - VendorBridge</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>VendorBridge</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="active">Dashboard</a>
+                <a href="/products">Products</a>
+                <a href="/orders">Orders</a>
+                <a href="/profile">Profile</a>
+                <a href="/auth/logout" class="logout-link">Logout</a>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <header class="content-header">
+                <h1 id="welcome-msg">Welcome, Vendor</h1>
+                <div class="user-info">
+                    <span id="vendor-name-display"></span>
+                </div>
+            </header>
+            
+            <section class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Products</h3>
+                    <p id="stat-products">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Orders</h3>
+                    <p id="stat-orders">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Pending Orders</h3>
+                    <p id="stat-pending">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Shipped Orders</h3>
+                    <p id="stat-shipped">0</p>
+                </div>
+            </section>
+            
+            <section class="recent-orders">
+                <h2>Recent Orders</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Status</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-orders-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="/js/dashboard.js"></script>
+</body>
+</html>
