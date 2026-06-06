@@ -41,9 +41,44 @@ app.use('/auth', authRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/shop', shopRoutes);
 app.use('/buyer', buyerRoutes);
-app.use('/orders', ordersRoutes); // Mount orders routes
-app.use('/products', productsRoutes); // Mount products routes
-app.use('/profile', profileRoutes); // Mount profile routes
+app.use('/orders', ordersRoutes);
+app.use('/products', productsRoutes);
+app.use('/profile', profileRoutes);
+
+// Unified API Routes to match all frontend fetch patterns
+app.get('/api/products', (req, res) => {
+    if (!req.session.vendorId) return res.status(401).json({ error: 'Unauthorized' });
+    const { db } = require('./init');
+    db.all('SELECT * FROM products WHERE vendor_id = ? ORDER BY created_at DESC', [req.session.vendorId], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows || []);
+    });
+});
+
+app.get('/api/orders', (req, res) => {
+    if (!req.session.vendorId) return res.status(401).json({ error: 'Unauthorized' });
+    const { db } = require('./init');
+    db.all('SELECT * FROM orders WHERE vendor_id = ? ORDER BY created_at DESC', [req.session.vendorId], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const mappedRows = rows.map(r => ({
+            id: r.id,
+            buyer_name: r.customer_name,
+            buyer_email: r.customer_email,
+            total_amount: r.total_amount,
+            quantity: 1,
+            status: r.status
+        }));
+        res.json(mappedRows || []);
+    });
+});
+
+app.get('/api/shop/products', (req, res) => {
+    const { db } = require('./init');
+    db.all('SELECT * FROM products WHERE status = ?', ['active'], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Database error' });
+        res.json(rows || []);
+    });
+});
 
 // Serve HTML files for specific routes
 app.get('/login', (req, res) => {

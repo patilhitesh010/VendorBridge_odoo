@@ -29,6 +29,7 @@ async function initDb() {
                 price REAL NOT NULL,
                 stock INTEGER DEFAULT 0,
                 description TEXT,
+                status TEXT DEFAULT 'active',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (vendor_id) REFERENCES vendors (id)
             )`);
