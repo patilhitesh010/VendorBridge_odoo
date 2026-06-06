@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice - VendorBridge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .invoice-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 20px;
+        }
+
+        .company-info h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .company-info p {
+            color: #666;
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .invoice-info {
+            text-align: right;
+        }
+
+        .invoice-info h3 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .invoice-info p {
+            color: #666;
+            font-size: 13px;
+            margin: 5px 0;
+        }
+
+        .invoice-number {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .invoice-status {
+            display: inline-block;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-top: 10px;
+        }
+
+        .invoice-status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .invoice-status.confirmed {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .invoice-status.shipped {
+            background: #cfe2ff;
+            color: #084298;
+        }
+
+        .invoice-status.delivered {
+            background: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .address-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .address-block h4 {
+            color: #667eea;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .address-block p {
+            color: #333;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 5px 0;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        .items-table th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+            font-size: 13px;
+        }
+
+        .items-table td {
+            padding: 15px 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .items-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .summary-section {
+            display: flex;
+            justify-content: flex-end;
+            margin: 30px 0;
+        }
+
+        .summary {
+            width: 300px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 14px;
+            color: #333;
+            border-bottom: 1px solid #eee;
+        }
+
+        .summary-row.total {
+            font-weight: 600;
+            font-size: 18px;
+            border-bottom: 2px solid #667eea;
+            border-top: 2px solid #667eea;
+            margin-top: 10px;
+            padding: 15px 0;
+            color: #667eea;
+        }
+
+        .notes-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 30px;
+        }
+
+        .notes-section h4 {
+            color: #333;
+            font-size: 13px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .notes-section p {
+            color: #666;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #999;
+            font-size: 12px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 30px 0;
+            print {
+                display: none;
+            }
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            padding: 10px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #764ba2;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .container {
+                box-shadow: none;
+                padding: 0;
+            }
+
+            .action-buttons {
+                display: none;
+            }
+
+            button {
+                display: none;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .invoice-header {
+                flex-direction: column;
+            }
+
+            .invoice-info {
+                text-align: left;
+                margin-top: 20px;
+            }
+
+            .address-section {
+                grid-template-columns: 1fr;
+            }
+
+            .items-table {
+                font-size: 12px;
+            }
+
+            .items-table th, .items-table td {
+                padding: 8px;
+            }
+
+            .summary {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="invoice-header">
+            <div class="company-info">
+                <h1>VendorBridge</h1>
+                <p>Invoice Management System</p>
+            </div>
+            <div class="invoice-info">
+                <h3>Invoice</h3>
+                <p><span class="invoice-number" id="invoiceNum">#-</span></p>
+                <p>Date: <span id="invoiceDate">-</span></p>
+                <span class="invoice-status" id="statusBadge">pending</span>
+            </div>
+        </div>
+
+        <div class="address-section">
+            <div class="address-block">
+                <h4>Vendor Information</h4>
+                <p><strong id="vendorName">-</strong></p>
+                <p id="vendorCompany">-</p>
+                <p id="vendorAddress">-</p>
+                <p id="vendorContact">-</p>
+            </div>
+
+            <div class="address-block">
+                <h4>Bill To / Ship To</h4>
+                <p><strong id="buyerName">-</strong></p>
+                <p id="buyerEmail">-</p>
+                <p id="buyerPhone">-</p>
+                <p id="buyerAddress">-</p>
+            </div>
+        </div>
+
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th class="text-right">Qty</th>
+                    <th class="text-right">Unit Price</th>
+                    <th class="text-right">Amount</th>
+                </tr>
+            </thead>
+            <tbody id="itemsBody">
+            </tbody>
+        </table>
+
+        <div class="summary-section">
+            <div class="summary">
+                <div class="summary-row">
+                    <span>Subtotal:</span>
+                    <span id="subtotal">₹0.00</span>
+                </div>
+                <div class="summary-row">
+                    <span>Tax (0%):</span>
+                    <span id="tax">₹0.00</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total:</span>
+                    <span id="total">₹0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="notes-section">
+            <h4>Order Status</h4>
+            <p>Order Status: <strong id="orderStatus">Pending</strong></p>
+            <p>Thank you for your business! If you have any questions, please contact the vendor.</p>
+        </div>
+
+        <div class="footer">
+            <p>This is an electronically generated invoice. Generated on <span id="generatedDate">-</span></p>
+        </div>
+
+        <div class="action-buttons">
+            <button onclick="window.print()">🖨️ Print Invoice</button>
+            <button onclick="window.close()">✕ Close</button>
+        </div>
+    </div>
+
+    <script>
+        async function loadInvoice() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const orderId = urlParams.get('orderId');
+            const email = urlParams.get('email');
+
+            if (!orderId || !email) {
+                document.body.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Invalid invoice parameters</div>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/buyer/invoice/${orderId}?email=${encodeURIComponent(email)}`);
+
+                if (!response.ok) {
+                    throw new Error('Invoice not found');
+                }
+
+                const data = await response.json();
+                displayInvoice(data);
+
+            } catch (error) {
+                document.body.innerHTML = `<div style="padding: 20px; text-align: center; color: red;">❌ ${error.message}</div>`;
+            }
+        }
+
+        function displayInvoice(data) {
+            const { orderNumber, orderDate, vendor, buyer, items, subtotal, total, status } = data;
+
+            // Header info
+            document.getElementById('invoiceNum').textContent = orderNumber;
+            document.getElementById('invoiceDate').textContent = orderDate;
+            document.getElementById('statusBadge').textContent = status.toUpperCase();
+            document.getElementById('statusBadge').className = `invoice-status ${status}`;
+
+            // Vendor info
+            document.getElementById('vendorName').textContent = vendor.name;
+            document.getElementById('vendorCompany').textContent = vendor.company_name;
+            document.getElementById('vendorAddress').textContent = `${vendor.address}, ${vendor.city}, ${vendor.state}`;
+            document.getElementById('vendorContact').textContent = `📧 ${vendor.email} | 📞 ${vendor.phone}`;
+
+            // Buyer info
+            document.getElementById('buyerName').textContent = buyer.name;
+            document.getElementById('buyerEmail').textContent = `📧 ${buyer.email}`;
+            document.getElementById('buyerPhone').textContent = `📞 ${buyer.phone}`;
+            document.getElementById('buyerAddress').textContent = buyer.address;
+
+            // Items
+            const itemsBody = document.getElementById('itemsBody');
+            items.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td>${item.category || '-'}</td>
+                    <td class="text-right">${item.quantity}</td>
+                    <td class="text-right">₹${item.price.toFixed(2)}</td>
+                    <td class="text-right">₹${(item.price * item.quantity).toFixed(2)}</td>
+                `;
+                itemsBody.appendChild(row);
+            });
+
+            // Summary
+            document.getElementById('subtotal').textContent = `₹${subtotal.toFixed(2)}`;
+            document.getElementById('tax').textContent = `₹0.00`;
+            document.getElementById('total').textContent = `₹${total.toFixed(2)}`;
+            document.getElementById('orderStatus').textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            document.getElementById('generatedDate').textContent = new Date().toLocaleDateString('en-IN');
+        }
+
+        loadInvoice();
+    </script>
+</body>
+</html>
