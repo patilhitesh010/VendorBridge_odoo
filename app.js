@@ -5,7 +5,7 @@ const { initDb } = require('./init'); // Import initDb function
 
 // Import route modules
 const authRoutes = require('./auth');
-const dashboardRoutes = require('./dashboard');
+const dashboardRoutes = require('./dashboard1');
 const shopRoutes = require('./shop');
 const buyerRoutes = require('./buyer');
 const ordersRoutes = require('./orders'); // Assuming orders.js exists and exports a router
