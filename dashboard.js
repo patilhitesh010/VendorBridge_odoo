@@ -1,52 +1,39 @@
-const express = require('express');
-const { db } = require('../db/init');
+document.addEventListener('DOMContentLoaded', () => {
+    fetch('/auth/status')
+        .then(res => res.json())
+        .then(data => {
+            if (data.loggedIn) {
+                document.getElementById('welcome-msg').textContent = `Welcome, ${data.vendorName}`;
+                document.getElementById('vendor-name-display').textContent = data.vendorName;
+                loadStats();
+            } else {
+                window.location.href = '/login';
+            }
+        });
 
-const router = express.Router();
+    function loadStats() {
+        fetch('/dashboard/stats')
+            .then(res => res.json())
+            .then(stats => {
+                document.getElementById('stat-products').textContent = stats.totalProducts;
+                document.getElementById('stat-orders').textContent = stats.totalOrders;
+                document.getElementById('stat-pending').textContent = stats.pendingOrders;
+                document.getElementById('stat-shipped').textContent = stats.shippedOrders;
 
-// Middleware to check authentication
-const isAuthenticated = (req, res, next) => {
-    if (req.session.vendorId) {
-        next();
-    } else {
-        res.status(401).json({ error: 'Not authenticated' });
+                const list = document.getElementById('recent-orders-list');
+                list.innerHTML = '';
+                stats.recentOrders.forEach(order => {
+                    const row = `
+                        <tr>
+                            <td>#${order.id}</td>
+                            <td>${order.customer_name}</td>
+                            <td><span class="status-badge status-${order.status}">${order.status}</span></td>
+                            <td>$${order.total_amount.toFixed(2)}</td>
+                            <td>${new Date(order.created_at).toLocaleDateString()}</td>
+                        </tr>
+                    `;
+                    list.innerHTML += row;
+                });
+            });
     }
-};
-
-// Get dashboard stats
-router.get('/', isAuthenticated, (req, res) => {
-    db.serialize(() => {
-        let stats = {
-            totalProducts: 0,
-            totalOrders: 0,
-            totalRevenue: 0,
-            pendingOrders: 0
-        };
-        let queriesCompleted = 0;
-
-        db.get('SELECT COUNT(*) as count FROM products WHERE vendor_id = ?', [req.session.vendorId], (err, result) => {
-            if (result) stats.totalProducts = result.count;
-            queriesCompleted++;
-            if (queriesCompleted === 4) res.json(stats);
-        });
-
-        db.get('SELECT COUNT(*) as count FROM orders WHERE vendor_id = ?', [req.session.vendorId], (err, result) => {
-            if (result) stats.totalOrders = result.count;
-            queriesCompleted++;
-            if (queriesCompleted === 4) res.json(stats);
-        });
-
-        db.get('SELECT COALESCE(SUM(total_amount), 0) as total FROM orders WHERE vendor_id = ?', [req.session.vendorId], (err, result) => {
-            if (result) stats.totalRevenue = result.total;
-            queriesCompleted++;
-            if (queriesCompleted === 4) res.json(stats);
-        });
-
-        db.get(`SELECT COUNT(*) as count FROM orders WHERE vendor_id = ? AND status = 'pending'`, [req.session.vendorId], (err, result) => {
-            if (result) stats.pendingOrders = result.count;
-            queriesCompleted++;
-            if (queriesCompleted === 4) res.json(stats);
-        });
-    });
 });
-
-module.exports = router;

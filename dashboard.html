@@ -3,99 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VendorBridge - Dashboard</title>
+    <title>Dashboard - VendorBridge</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <div class="container">
-        <nav class="navbar">
-            <div class="navbar-brand">
-                <h1>VendorBridge</h1>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>VendorBridge</h2>
             </div>
-            <ul class="navbar-menu">
-                <li><a href="/dashboard" class="active">Dashboard</a></li>
-                <li><a href="/products">Products</a></li>
-                <li><a href="/orders">Orders</a></li>
-                <li><a href="/profile">Profile</a></li>
-                <li><a href="#" id="logoutBtn">Logout</a></li>
-            </ul>
-        </nav>
-
-        <div class="content">
-            <h2>Dashboard</h2>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="active">Dashboard</a>
+                <a href="/products">Products</a>
+                <a href="/orders">Orders</a>
+                <a href="/profile">Profile</a>
+                <a href="/auth/logout" class="logout-link">Logout</a>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <header class="content-header">
+                <h1 id="welcome-msg">Welcome, Vendor</h1>
+                <div class="user-info">
+                    <span id="vendor-name-display"></span>
+                </div>
+            </header>
             
-            <div class="stats-container">
-                <div class="stat-box">
+            <section class="stats-grid">
+                <div class="stat-card">
                     <h3>Total Products</h3>
-                    <p class="stat-value" id="totalProducts">0</p>
+                    <p id="stat-products">0</p>
                 </div>
-                
-                <div class="stat-box">
+                <div class="stat-card">
                     <h3>Total Orders</h3>
-                    <p class="stat-value" id="totalOrders">0</p>
+                    <p id="stat-orders">0</p>
                 </div>
-                
-                <div class="stat-box">
-                    <h3>Total Revenue</h3>
-                    <p class="stat-value" id="totalRevenue">₹0</p>
-                </div>
-                
-                <div class="stat-box">
+                <div class="stat-card">
                     <h3>Pending Orders</h3>
-                    <p class="stat-value" id="pendingOrders">0</p>
+                    <p id="stat-pending">0</p>
                 </div>
-            </div>
-
-            <div class="welcome-section">
-                <h3 id="welcomeMsg">Welcome!</h3>
-                <p>Manage your products and orders from here.</p>
-            </div>
-        </div>
+                <div class="stat-card">
+                    <h3>Shipped Orders</h3>
+                    <p id="stat-shipped">0</p>
+                </div>
+            </section>
+            
+            <section class="recent-orders">
+                <h2>Recent Orders</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Status</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-orders-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
     </div>
-
-    <script>
-        async function loadDashboard() {
-            try {
-                const response = await fetch('/api/dashboard');
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
-                
-                const stats = await response.json();
-                document.getElementById('totalProducts').textContent = stats.totalProducts;
-                document.getElementById('totalOrders').textContent = stats.totalOrders;
-                document.getElementById('totalRevenue').textContent = '₹' + stats.totalRevenue.toFixed(2);
-                document.getElementById('pendingOrders').textContent = stats.pendingOrders;
-            } catch (error) {
-                console.error('Error loading dashboard:', error);
-            }
-        }
-
-        async function loadVendorName() {
-            try {
-                const response = await fetch('/auth/vendor-info');
-                if (response.ok) {
-                    const vendor = await response.json();
-                    document.getElementById('welcomeMsg').textContent = `Welcome, ${vendor.name}!`;
-                }
-            } catch (error) {
-                console.error('Error loading vendor info:', error);
-            }
-        }
-
-        document.getElementById('logoutBtn').addEventListener('click', async (e) => {
-            e.preventDefault();
-            try {
-                await fetch('/auth/logout');
-                window.location.href = '/login';
-            } catch (error) {
-                console.error('Error logging out:', error);
-            }
-        });
-
-        loadDashboard();
-        loadVendorName();
-    </script>
+    <script src="/js/dashboard.js"></script>
 </body>
 </html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VendorBridge - Audit Logs</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <h1>VendorBridge ERP</h1>
+            </div>
+            <ul class="navbar-menu" id="navbarMenu">
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/logs" class="active">Audit Logs</a></li>
+                <li><a href="#" id="logoutBtn">Logout</a></li>
+            </ul>
+        </nav>
+
+        <div class="content">
+            <div class="page-header">
+                <h2>Procurement Activity Timeline & Audit Trail</h2>
+            </div>
+
+            <div class="panel">
+                <h3>📌 Chronological System Logs</h3>
+                <div id="logsTableContainer" style="margin-top: 15px;">
+                    <div class="loading">Loading audit logs...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadAuditLogs() {
+            const container = document.getElementById('logsTableContainer');
+            try {
+                const response = await fetch('/api/logs');
+                const logs = await response.json();
+
+                if (logs.length === 0) {
+                    container.innerHTML = '<p class="empty">No activity records found in the audit trail.</p>';
+                    return;
+                }
+
+                let html = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Performed By</th>
+                                <th>Role</th>
+                                <th>Action</th>
+                                <th>Transaction / Activity Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                logs.forEach(l => {
+                    const formattedTime = new Date(l.created_at).toLocaleString('en-IN');
+                    const roleBadge = l.user_role 
+                        ? `<span class="status status-processing" style="font-size:10px; padding:3px 8px; text-transform:uppercase;">${l.user_role}</span>`
+                        : '';
+                    
+                    html += `
+                        <tr>
+                            <td style="white-space:nowrap; font-size:13px; color:var(--text-light);">${formattedTime}</td>
+                            <td><strong>${l.user_name}</strong></td>
+                            <td>${roleBadge}</td>
+                            <td><strong style="color:var(--primary-color);">${l.action}</strong></td>
+                            <td style="font-size:13px;">${l.details}</td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (error) {
+                container.innerHTML = '<p class="error">Failed to load system activity logs.</p>';
+            }
+        }
+
+        // Build navigation menu dynamically
+        async function loadNavbar() {
+            const response = await fetch('/auth/vendor-info');
+            if (response.ok) {
+                const user = await response.json();
+                const menu = document.getElementById('navbarMenu');
+                let linksHtml = `<li><a href="/dashboard">Dashboard</a></li>`;
+                
+                if (user.role === 'officer' || user.role === 'admin') {
+                    linksHtml += `
+                        <li><a href="/vendors">Vendors</a></li>
+                        <li><a href="/rfqs">RFQs</a></li>
+                        <li><a href="/quotations">Worksheets</a></li>
+                        <li><a href="/purchase-orders">POs</a></li>
+                        <li><a href="/invoice">Invoices</a></li>
+                        <li><a href="/reports">Reports</a></li>
+                        <li><a href="/logs" class="active">Audit Logs</a></li>
+                    `;
+                } else if (user.role === 'manager') {
+                    linksHtml += `
+                        <li><a href="/approvals">Approvals</a></li>
+                        <li><a href="/reports">Reports</a></li>
+                        <li><a href="/logs" class="active">Audit Logs</a></li>
+                    `;
+                }
+
+                linksHtml += `
+                    <li><a href="/profile">Profile</a></li>
+                    <li><a href="#" id="logoutBtn">Logout</a></li>
+                `;
+                menu.innerHTML = linksHtml;
+
+                document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    await fetch('/auth/logout');
+                    window.location.href = '/login';
+                });
+            }
+        }
+
+        loadNavbar();
+        loadAuditLogs();
+    </script>
+</body>
+</html>

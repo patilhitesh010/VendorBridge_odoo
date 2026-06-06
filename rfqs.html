@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VendorBridge - RFQ Management</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .item-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 2fr auto;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .assigned-vendors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <h1>VendorBridge ERP</h1>
+            </div>
+            <ul class="navbar-menu" id="navbarMenu">
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/rfqs" class="active">RFQs</a></li>
+                <li><a href="#" id="logoutBtn">Logout</a></li>
+            </ul>
+        </nav>
+
+        <div class="content">
+            <div class="page-header">
+                <h2>Request for Quotations (RFQs)</h2>
+                <button class="btn btn-primary" id="addRfqBtn" style="width: auto; display: none;">Create New RFQ</button>
+            </div>
+
+            <!-- RFQs List -->
+            <div id="rfqListContainer">
+                <div class="loading">Loading RFQs...</div>
+            </div>
+
+            <!-- Create RFQ Modal (Officer only) -->
+            <div id="rfqModal" class="modal hidden">
+                <div class="modal-content" style="max-width: 700px;">
+                    <div class="modal-header">
+                        <h3>Create Request for Quotation (RFQ)</h3>
+                        <button class="close-btn" id="closeRfqModal">&times;</button>
+                    </div>
+                    
+                    <form id="rfqForm">
+                        <div class="form-group">
+                            <label for="rfqTitle">RFQ Title / Subject</label>
+                            <input type="text" id="rfqTitle" required placeholder="e.g. Office Hardware Refresh 2026">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="rfqDescription">Description / Context</label>
+                            <textarea id="rfqDescription" rows="3" placeholder="Provide background information..."></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="rfqDeadline">Submission Deadline</label>
+                                <input type="date" id="rfqDeadline" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Attachments (Optional)</label>
+                                <input type="text" id="rfqAttachment" placeholder="e.g. specs_sheet_v1.pdf">
+                            </div>
+                        </div>
+
+                        <!-- Product/Service Items List -->
+                        <div class="form-group">
+                            <label style="font-weight: bold;">Product / Service Items</label>
+                            <div id="itemsContainer" style="margin-top: 10px;">
+                                <div class="item-row">
+                                    <input type="text" placeholder="Item Name" required class="item-name">
+                                    <input type="number" placeholder="Qty" required class="item-qty" min="1">
+                                    <input type="text" placeholder="Specifications / Details" class="item-desc">
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="removeItemRow(this)">&times;</button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-edit" onclick="addItemRow()" style="margin-top: 10px;">+ Add Item</button>
+                        </div>
+
+                        <!-- Vendor Assignment -->
+                        <div class="form-group">
+                            <label style="font-weight: bold;">Assign Vendors to Invite</label>
+                            <div class="assigned-vendors-grid" id="vendorsChecklist">
+                                <p class="loading">Loading vendor list...</p>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="margin-top: 15px;">Publish RFQ</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- View RFQ Detail / Submit Quote Modal -->
+            <div id="detailModal" class="modal hidden">
+                <div class="modal-content" style="max-width: 650px;">
+                    <div class="modal-header">
+                        <h3 id="detailTitle">RFQ Details</h3>
+                        <button class="close-btn" id="closeDetailModal">&times;</button>
+                    </div>
+
+                    <div id="detailContent">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <!-- Vendor Quotation Form Section (Visible only to Vendors) -->
+                    <div id="quoteSection" style="margin-top: 30px; border-top: 2px solid var(--border-color); padding-top: 20px; display: none;">
+                        <h4>Submit Quotation Proposal</h4>
+                        <form id="quoteForm" style="margin-top: 15px;">
+                            <input type="hidden" id="quoteRfqId">
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="quotePrice">Total Quoted Price (INR)</label>
+                                    <input type="number" id="quotePrice" required placeholder="e.g. 1500000" min="0" step="0.01">
+                                </div>
+                                <div class="form-group">
+                                    <label for="quoteTimeline">Delivery Timeline</label>
+                                    <input type="text" id="quoteTimeline" required placeholder="e.g. 10 days, 3 weeks">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="quoteNotes">Proposal Notes / Comments</label>
+                                <textarea id="quoteNotes" rows="3" placeholder="Specify warranty terms, inclusion details..."></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary" id="quoteSubmitBtn">Submit Quote</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div id="message" class="message"></div>
+        </div>
+    </div>
+
+    <script>
+        let userRole = null;
+        let userId = null;
+
+        const rfqModal = document.getElementById('rfqModal');
+        const addRfqBtn = document.getElementById('addRfqBtn');
+        const rfqForm = document.getElementById('rfqForm');
+        const detailModal = document.getElementById('detailModal');
+        const quoteForm = document.getElementById('quoteForm');
+
+        // Close Modals
+        document.getElementById('closeRfqModal').addEventListener('click', () => rfqModal.classList.add('hidden'));
+        document.getElementById('closeDetailModal').addEventListener('click', () => detailModal.classList.add('hidden'));
+
+        addRfqBtn.addEventListener('click', () => {
+            rfqForm.reset();
+            // Reset items to single row
+            document.getElementById('itemsContainer').innerHTML = `
+                <div class="item-row">
+                    <input type="text" placeholder="Item Name" required class="item-name">
+                    <input type="number" placeholder="Qty" required class="item-qty" min="1">
+                    <input type="text" placeholder="Specifications / Details" class="item-desc">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeItemRow(this)">&times;</button>
+                </div>
+            `;
+            loadVendorsForRfq();
+            rfqModal.classList.remove('hidden');
+        });
+
+        // Item rows helper functions
+        function addItemRow() {
+            const container = document.getElementById('itemsContainer');
+            const row = document.createElement('div');
+            row.className = 'item-row';
+            row.innerHTML = `
+                <input type="text" placeholder="Item Name" required class="item-name">
+                <input type="number" placeholder="Qty" required class="item-qty" min="1">
+                <input type="text" placeholder="Specifications / Details" class="item-desc">
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeItemRow(this)">&times;</button>
+            `;
+            container.appendChild(row);
+        }
+
+        function removeItemRow(btn) {
+            const container = document.getElementById('itemsContainer');
+            if (container.children.length > 1) {
+                btn.parentElement.remove();
+            }
+        }
+
+        // Load active vendors to invite (Officer only)
+        async function loadVendorsForRfq() {
+            const checklist = document.getElementById('vendorsChecklist');
+            try {
+                const response = await fetch('/api/vendors?status=active');
+                const vendors = await response.json();
+                
+                if (vendors.length === 0) {
+                    checklist.innerHTML = '<p style="color:var(--danger-color); font-size:12px;">No active vendors registered. Register vendors first!</p>';
+                    return;
+                }
+
+                let html = '';
+                vendors.forEach(v => {
+                    html += `
+                        <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-bottom:5px;">
+                            <input type="checkbox" name="assignVendor" value="${v.id}">
+                            <span>${v.company_name} (${v.category})</span>
+                        </label>
+                    `;
+                });
+                checklist.innerHTML = html;
+            } catch (error) {
+                checklist.innerHTML = '<p class="error">Failed to load vendors.</p>';
+            }
+        }
+
+        // Submit RFQ Form
+        rfqForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Gather items
+            const itemRows = document.querySelectorAll('.item-row');
+            const items = [];
+            itemRows.forEach(row => {
+                items.push({
+                    name: row.querySelector('.item-name').value,
+                    qty: parseInt(row.querySelector('.item-qty').value),
+                    desc: row.querySelector('.item-desc').value
+                });
+            });
+
+            // Gather vendor selections
+            const checkboxes = document.querySelectorAll('input[name="assignVendor"]:checked');
+            const vendorIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+            if (vendorIds.length === 0) {
+                alert('Please assign at least one vendor to this RFQ.');
+                return;
+            }
+
+            const rfqData = {
+                title: document.getElementById('rfqTitle').value,
+                description: document.getElementById('rfqDescription').value,
+                deadline: document.getElementById('rfqDeadline').value,
+                attachments: document.getElementById('rfqAttachment').value,
+                items,
+                vendorIds
+            };
+
+            try {
+                const response = await fetch('/api/rfqs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(rfqData)
+                });
+
+                if (response.ok) {
+                    rfqModal.classList.add('hidden');
+                    loadRfqs();
+                    showMessage('RFQ created and vendors notified successfully!', 'success');
+                } else {
+                    showMessage('Failed to publish RFQ', 'error');
+                }
+            } catch (error) {
+                showMessage('Error publishing RFQ', 'error');
+            }
+        });
+
+        // Load RFQs
+        async function loadRfqs() {
+            const container = document.getElementById('rfqListContainer');
+            try {
+                const response = await fetch('/api/rfqs');
+                const rfqs = await response.json();
+                
+                if (rfqs.length === 0) {
+                    container.innerHTML = '<p class="empty">No RFQs found in your dashboard.</p>';
+                    return;
+                }
+
+                let html = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Title</th>
+                                <th>Deadline</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                rfqs.forEach(r => {
+                    const statusClass = r.status === 'active' ? 'status-pending' : 'status-completed';
+                    html += `
+                        <tr>
+                            <td>#${r.id}</td>
+                            <td><strong>${r.title}</strong></td>
+                            <td>${new Date(r.deadline).toLocaleDateString('en-IN')}</td>
+                            <td><span class="status ${statusClass}">${r.status}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewRfqDetail(${r.id})">Details</button>
+                                ${userRole === 'officer' ? `<button class="btn btn-sm btn-danger" onclick="closeRfq(${r.id})">Close</button>` : ''}
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (error) {
+                container.innerHTML = '<p class="error">Error loading RFQs.</p>';
+            }
+        }
+
+        // View RFQ details
+        async function viewRfqDetail(rfqId) {
+            const contentDiv = document.getElementById('detailContent');
+            contentDiv.innerHTML = '<p class="loading">Loading details...</p>';
+            detailModal.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`/api/rfqs/${rfqId}`);
+                const data = await response.json();
+                const r = data.rfq;
+
+                let itemsHtml = '<ul>';
+                const parsedItems = JSON.parse(r.items);
+                parsedItems.forEach(i => {
+                    itemsHtml += `<li><strong>${i.name}</strong> (Qty: ${i.qty}) ${i.desc ? ' - ' + i.desc : ''}</li>`;
+                });
+                itemsHtml += '</ul>';
+
+                let generalHtml = `
+                    <p style="margin-bottom:10px;"><strong>Description:</strong> ${r.description || 'No description provided.'}</p>
+                    <p style="margin-bottom:10px;"><strong>Deadline:</strong> ${new Date(r.deadline).toLocaleDateString('en-IN')}</p>
+                    <p style="margin-bottom:10px;"><strong>Attachment:</strong> ${r.attachments ? `📄 <code style="background:#e5e7eb; padding:2px 5px; border-radius:4px;">${r.attachments}</code>` : 'None'}</p>
+                    <p style="margin-bottom:20px;"><strong>Status:</strong> <span class="status status-pending">${r.status}</span></p>
+                    <h5 style="margin-bottom:10px; font-size:15px; border-bottom:1px solid var(--border-color); padding-bottom:5px;">Required Items</h5>
+                    ${itemsHtml}
+                `;
+
+                contentDiv.innerHTML = generalHtml;
+
+                // Configure quote submission for vendors
+                if (userRole === 'vendor') {
+                    document.getElementById('quoteSection').style.display = 'block';
+                    document.getElementById('quoteRfqId').value = rfqId;
+                    
+                    if (data.quotation) {
+                        document.getElementById('quotePrice').value = data.quotation.price;
+                        document.getElementById('quoteTimeline').value = data.quotation.delivery_timeline;
+                        document.getElementById('quoteNotes').value = data.quotation.notes || '';
+                        document.getElementById('quoteSubmitBtn').textContent = 'Revise Quotation';
+                    } else {
+                        document.getElementById('quoteForm').reset();
+                        document.getElementById('quoteSubmitBtn').textContent = 'Submit Quotation';
+                    }
+                } else {
+                    document.getElementById('quoteSection').style.display = 'none';
+                }
+            } catch (error) {
+                contentDiv.innerHTML = '<p class="error">Failed to load RFQ details.</p>';
+            }
+        }
+
+        // Submit Vendor Quotation Proposal
+        quoteForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const quoteData = {
+                rfq_id: parseInt(document.getElementById('quoteRfqId').value),
+                price: parseFloat(document.getElementById('quotePrice').value),
+                delivery_timeline: document.getElementById('quoteTimeline').value,
+                notes: document.getElementById('quoteNotes').value
+            };
+
+            try {
+                const response = await fetch('/api/quotations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(quoteData)
+                });
+
+                if (response.ok) {
+                    detailModal.classList.add('hidden');
+                    loadRfqs();
+                    showMessage('Your quotation proposal has been submitted successfully!', 'success');
+                } else {
+                    showMessage('Failed to submit quotation', 'error');
+                }
+            } catch (error) {
+                showMessage('Error submitting quotation', 'error');
+            }
+        });
+
+        // Close RFQ (Officer only)
+        async function closeRfq(rfqId) {
+            if (!confirm('Are you sure you want to close this RFQ? No more quotes can be submitted.')) return;
+
+            try {
+                const response = await fetch(`/api/rfqs/${rfqId}`, { method: 'DELETE' });
+                if (response.ok) {
+                    loadRfqs();
+                    showMessage('RFQ closed successfully.', 'success');
+                }
+            } catch (error) {
+                showMessage('Error closing RFQ', 'error');
+            }
+        }
+
+        // Build navigation menu dynamically
+        async function loadNavbar() {
+            const response = await fetch('/auth/vendor-info');
+            if (response.ok) {
+                const user = await response.json();
+                userRole = user.role;
+                userId = user.id;
+
+                const menu = document.getElementById('navbarMenu');
+                let linksHtml = `<li><a href="/dashboard">Dashboard</a></li>`;
+                
+                if (userRole === 'officer' || userRole === 'admin') {
+                    document.getElementById('addRfqBtn').style.display = 'inline-block';
+                    linksHtml += `
+                        <li><a href="/vendors">Vendors</a></li>
+                        <li><a href="/rfqs" class="active">RFQs</a></li>
+                        <li><a href="/quotations">Worksheets</a></li>
+                        <li><a href="/purchase-orders">POs</a></li>
+                        <li><a href="/invoice">Invoices</a></li>
+                        <li><a href="/reports">Reports</a></li>
+                        <li><a href="/logs">Audit Logs</a></li>
+                    `;
+                } else if (userRole === 'vendor') {
+                    linksHtml += `
+                        <li><a href="/rfqs" class="active">RFQs</a></li>
+                        <li><a href="/quotations">My Quotes</a></li>
+                        <li><a href="/purchase-orders">My POs</a></li>
+                        <li><a href="/invoice">My Invoices</a></li>
+                    `;
+                }
+
+                linksHtml += `
+                    <li><a href="/profile">Profile</a></li>
+                    <li><a href="#" id="logoutBtn">Logout</a></li>
+                `;
+                menu.innerHTML = linksHtml;
+
+                document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    await fetch('/auth/logout');
+                    window.location.href = '/login';
+                });
+
+                loadRfqs();
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            setTimeout(() => messageDiv.textContent = '', 3000);
+        }
+
+        loadNavbar();
+    </script>
+</body>
+</html>

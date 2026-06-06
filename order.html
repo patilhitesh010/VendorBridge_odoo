@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Management - VendorBridge</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>VendorBridge</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/products">Products</a>
+                <a href="/orders" class="active">Orders</a>
+                <a href="/profile">Profile</a>
+                <a href="/auth/logout" class="logout-link">Logout</a>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <header class="content-header">
+                <h1>Order Management</h1>
+                <div class="filter-bar">
+                    <input type="text" id="order-search" placeholder="Search customer or ID..." oninput="loadOrders()">
+                    <select id="status-filter" onchange="loadOrders()">
+                        <option value="">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="packed">Packed</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+            </header>
+            
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Tracking #</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="order-list">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Order Modal -->
+    <div id="order-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Update Order #<span id="modal-order-id"></span></h2>
+            <form id="order-form" method="POST">
+                <div class="form-group">
+                    <label for="status">Order Status</label>
+                    <select id="status" name="status" required>
+                        <option value="pending">Pending</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="packed">Packed</option>
+                        <option value="shipped">Shipped</option>
+                        <option value="delivered">Delivered</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="tracking_number">Tracking Number</label>
+                    <input type="text" id="tracking_number" name="tracking_number">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="hideModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Update Order</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/orders.js"></script>
+</body>
+</html>

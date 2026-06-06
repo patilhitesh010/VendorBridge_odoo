@@ -3,152 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VendorBridge - Profile</title>
+    <title>Vendor Profile - VendorBridge</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <div class="container">
-        <nav class="navbar">
-            <div class="navbar-brand">
-                <h1>VendorBridge</h1>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>VendorBridge</h2>
             </div>
-            <ul class="navbar-menu">
-                <li><a href="/dashboard">Dashboard</a></li>
-                <li><a href="/products">Products</a></li>
-                <li><a href="/orders">Orders</a></li>
-                <li><a href="/profile" class="active">Profile</a></li>
-                <li><a href="#" id="logoutBtn">Logout</a></li>
-            </ul>
-        </nav>
+            <nav class="sidebar-nav">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/products">Products</a>
+                <a href="/orders">Orders</a>
+                <a href="/profile" class="active">Profile</a>
+                <a href="/auth/logout" class="logout-link">Logout</a>
+            </nav>
+        </aside>
+        
+        <main class="main-content">
+            <header class="content-header">
+                <h1>Vendor Profile</h1>
+            </header>
+            
+            <div id="message" class="alert hidden"></div>
 
-        <div class="content">
-            <h2>Vendor Profile</h2>
-
-            <form id="profileForm" class="profile-form">
-                <div class="form-row">
+            <div class="profile-container">
+                <form action="/profile/update" method="POST" class="profile-form">
                     <div class="form-group">
-                        <label for="name">Full Name</label>
-                        <input type="text" id="name" required>
+                        <label for="vendor_name">Vendor Contact Name</label>
+                        <input type="text" id="vendor_name" name="vendor_name" required>
                     </div>
-                    
                     <div class="form-group">
-                        <label for="phone">Phone</label>
-                        <input type="tel" id="phone">
+                        <label for="company_name">Company Name</label>
+                        <input type="text" id="company_name" name="company_name" required>
                     </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="company_name">Company Name</label>
-                    <input type="text" id="company_name" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="address">Address</label>
-                    <input type="text" id="address">
-                </div>
-
-                <div class="form-row">
                     <div class="form-group">
-                        <label for="city">City</label>
-                        <input type="text" id="city">
+                        <label for="email">Email Address (Cannot be changed)</label>
+                        <input type="email" id="email" disabled>
                     </div>
-                    
                     <div class="form-group">
-                        <label for="state">State</label>
-                        <input type="text" id="state">
+                        <label for="phone">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" required>
                     </div>
-                    
                     <div class="form-group">
-                        <label for="pincode">Pincode</label>
-                        <input type="text" id="pincode">
+                        <label for="address">Company Address</label>
+                        <textarea id="address" name="address" required></textarea>
                     </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="email">Email (Read-only)</label>
-                    <input type="email" id="email" readonly>
-                </div>
-
-                <button type="submit" class="btn btn-primary">Update Profile</button>
-            </form>
-
-            <div id="message" class="message"></div>
-        </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Update Profile</button>
+                    </div>
+                </form>
+            </div>
+        </main>
     </div>
 
     <script>
-        async function loadProfile() {
-            try {
-                const response = await fetch('/api/profile');
-                if (response.status === 401) {
-                    window.location.href = '/login';
-                    return;
-                }
-
-                if (response.ok) {
-                    const vendor = await response.json();
-                    document.getElementById('name').value = vendor.name;
-                    document.getElementById('phone').value = vendor.phone || '';
-                    document.getElementById('company_name').value = vendor.company_name;
-                    document.getElementById('address').value = vendor.address || '';
-                    document.getElementById('city').value = vendor.city || '';
-                    document.getElementById('state').value = vendor.state || '';
-                    document.getElementById('pincode').value = vendor.pincode || '';
-                    document.getElementById('email').value = vendor.email;
-                }
-            } catch (error) {
-                showMessage('Error loading profile', 'error');
-            }
-        }
-
-        document.getElementById('profileForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const profileData = {
-                name: document.getElementById('name').value,
-                phone: document.getElementById('phone').value,
-                company_name: document.getElementById('company_name').value,
-                address: document.getElementById('address').value,
-                city: document.getElementById('city').value,
-                state: document.getElementById('state').value,
-                pincode: document.getElementById('pincode').value
-            };
-
-            try {
-                const response = await fetch('/api/profile', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(profileData)
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('/profile/data')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('vendor_name').value = data.vendor_name;
+                    document.getElementById('company_name').value = data.company_name;
+                    document.getElementById('email').value = data.email;
+                    document.getElementById('phone').value = data.phone;
+                    document.getElementById('address').value = data.address;
                 });
 
-                if (response.ok) {
-                    showMessage('Profile updated successfully', 'success');
-                } else {
-                    showMessage('Failed to update profile', 'error');
-                }
-            } catch (error) {
-                showMessage('Error updating profile', 'error');
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('updated')) {
+                const msg = document.getElementById('message');
+                msg.textContent = 'Profile updated successfully!';
+                msg.classList.remove('hidden');
+                msg.classList.add('alert-success');
             }
         });
-
-        document.getElementById('logoutBtn').addEventListener('click', async (e) => {
-            e.preventDefault();
-            try {
-                await fetch('/auth/logout');
-                window.location.href = '/login';
-            } catch (error) {
-                console.error('Error logging out:', error);
-            }
-        });
-
-        function showMessage(text, type) {
-            const messageDiv = document.getElementById('message');
-            messageDiv.className = `message ${type}`;
-            messageDiv.textContent = text;
-            setTimeout(() => messageDiv.textContent = '', 3000);
-        }
-
-        loadProfile();
     </script>
 </body>
 </html>

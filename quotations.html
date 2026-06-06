@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VendorBridge - Quotation Workspace</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .compare-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+        }
+        .compare-card {
+            background: white;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 25px;
+            position: relative;
+            transition: all 0.3s;
+        }
+        .compare-card.lowest {
+            border-color: var(--success-color);
+            box-shadow: 0 4px 15px rgba(22, 163, 74, 0.15);
+        }
+        .lowest-badge {
+            position: absolute;
+            top: -12px;
+            right: 20px;
+            background: var(--success-color);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .compare-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px dashed var(--border-color);
+        }
+        .compare-row:last-child {
+            border-bottom: none;
+        }
+        .compare-label {
+            color: var(--text-light);
+            font-size: 13px;
+        }
+        .compare-val {
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .compare-price {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 15px 0;
+            text-align: center;
+        }
+        .compare-card.lowest .compare-price {
+            color: var(--success-color);
+        }
+        .rfq-selector-panel {
+            background-color: var(--light-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <h1>VendorBridge ERP</h1>
+            </div>
+            <ul class="navbar-menu" id="navbarMenu">
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/quotations" class="active">Quotations</a></li>
+                <li><a href="#" id="logoutBtn">Logout</a></li>
+            </ul>
+        </nav>
+
+        <div class="content">
+            <!-- Dynamic header based on roles -->
+            <div class="page-header">
+                <h2 id="pageTitle">Quotation Worksheet</h2>
+            </div>
+
+            <!-- Procurement Officer View: Comparison Workspace -->
+            <div id="officerWorkspace" style="display:none;">
+                <div class="rfq-selector-panel">
+                    <label for="rfqSelect" style="font-weight:600; display:block; margin-bottom:10px;">Select RFQ for Comparison</label>
+                    <select id="rfqSelect" onchange="compareQuotations()" style="width:100%; max-width:400px; padding:12px; border:1px solid var(--border-color); border-radius:6px; font-family:inherit; background:white;">
+                        <option value="">-- Choose an RFQ --</option>
+                    </select>
+                </div>
+
+                <div id="comparisonDetail" style="display:none;">
+                    <div class="panel">
+                        <h3 id="compRfqTitle">RFQ</h3>
+                        <p id="compRfqDesc" style="color:var(--text-light); font-size:14px; margin-bottom:10px;"></p>
+                        <p id="compRfqDeadline" style="font-weight:600; font-size:13px;"></p>
+                    </div>
+
+                    <h4 style="margin-top:30px;">Side-by-Side Bids Comparison</h4>
+                    <div class="compare-card-grid" id="compareGrid">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vendor View: Submitted Bids Tracking -->
+            <div id="vendorWorkspace" style="display:none;">
+                <div id="myQuotesContainer">
+                    <div class="loading">Loading your quotations...</div>
+                </div>
+            </div>
+
+            <div id="message" class="message"></div>
+        </div>
+    </div>
+
+    <script>
+        let userRole = null;
+
+        // Build navigation menu dynamically
+        async function loadNavbar() {
+            const response = await fetch('/auth/vendor-info');
+            if (response.ok) {
+                const user = await response.json();
+                userRole = user.role;
+                
+                const menu = document.getElementById('navbarMenu');
+                let linksHtml = `<li><a href="/dashboard">Dashboard</a></li>`;
+                
+                if (user.role === 'officer' || user.role === 'admin') {
+                    document.getElementById('pageTitle').textContent = 'Quotation Comparison Worksheet';
+                    document.getElementById('officerWorkspace').style.display = 'block';
+                    linksHtml += `
+                        <li><a href="/vendors">Vendors</a></li>
+                        <li><a href="/rfqs">RFQs</a></li>
+                        <li><a href="/quotations" class="active">Worksheets</a></li>
+                        <li><a href="/purchase-orders">POs</a></li>
+                        <li><a href="/invoice">Invoices</a></li>
+                        <li><a href="/reports">Reports</a></li>
+                        <li><a href="/logs">Audit Logs</a></li>
+                    `;
+                    loadRfqOptions();
+                } else if (user.role === 'vendor') {
+                    document.getElementById('pageTitle').textContent = 'My Quotation Proposals';
+                    document.getElementById('vendorWorkspace').style.display = 'block';
+                    linksHtml += `
+                        <li><a href="/rfqs">RFQs</a></li>
+                        <li><a href="/quotations" class="active">My Quotes</a></li>
+                        <li><a href="/purchase-orders">My POs</a></li>
+                        <li><a href="/invoice">My Invoices</a></li>
+                    `;
+                    loadVendorQuotes();
+                }
+
+                linksHtml += `
+                    <li><a href="/profile">Profile</a></li>
+                    <li><a href="#" id="logoutBtn">Logout</a></li>
+                `;
+                menu.innerHTML = linksHtml;
+
+                document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    await fetch('/auth/logout');
+                    window.location.href = '/login';
+                });
+            }
+        }
+
+        // --- OFFICER WORKFLOWS ---
+
+        // Load RFQ choices for selection
+        async function loadRfqOptions() {
+            try {
+                const response = await fetch('/api/rfqs');
+                const rfqs = await response.json();
+                const select = document.getElementById('rfqSelect');
+                
+                rfqs.forEach(r => {
+                    select.innerHTML += `<option value="${r.id}">${r.title} (ID #${r.id})</option>`;
+                });
+
+                // Check query string if redirected from dashboard
+                const urlParams = new URLSearchParams(window.location.search);
+                const rfqParam = urlParams.get('rfq');
+                if (rfqParam) {
+                    select.value = rfqParam;
+                    compareQuotations();
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        // Perform side-by-side comparison
+        async function compareQuotations() {
+            const rfqId = document.getElementById('rfqSelect').value;
+            const detailDiv = document.getElementById('comparisonDetail');
+            const grid = document.getElementById('compareGrid');
+
+            if (!rfqId) {
+                detailDiv.style.display = 'none';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/quotations/compare/${rfqId}`);
+                const data = await response.json();
+
+                document.getElementById('compRfqTitle').textContent = `RFQ #${data.rfq.id}: ${data.rfq.title}`;
+                document.getElementById('compRfqDesc').textContent = data.rfq.description;
+                document.getElementById('compRfqDeadline').innerHTML = `Deadline: <span style="color:var(--danger-color);">${new Date(data.rfq.deadline).toLocaleDateString('en-IN')}</span>`;
+                
+                grid.innerHTML = '';
+
+                if (data.quotations.length === 0) {
+                    grid.innerHTML = '<p class="empty" style="grid-column: 1/-1;">No quotes submitted by vendors for this RFQ yet.</p>';
+                } else {
+                    data.quotations.forEach(q => {
+                        const stars = '⭐'.repeat(Math.round(q.vendor_rating || 5));
+                        const statusClass = q.status === 'approved' ? 'status-completed' : (q.status === 'under_review' ? 'status-pending' : 'status-cancelled');
+                        
+                        let cardHtml = `
+                            <div class="compare-card ${q.is_lowest ? 'lowest' : ''}">
+                                ${q.is_lowest ? '<span class="lowest-badge">Lowest Price</span>' : ''}
+                                <h4 style="text-align:center; margin-bottom:5px;">${q.company_name || q.vendor_name}</h4>
+                                <div style="text-align:center; font-size:12px; color:var(--text-light); margin-bottom:15px;">Rating: ${stars}</div>
+                                
+                                <div class="compare-price">₹${q.price.toLocaleString('en-IN')}</div>
+                                
+                                <div class="compare-row">
+                                    <span class="compare-label">Delivery Timeline</span>
+                                    <span class="compare-val" style="color:var(--warning-color);">${q.delivery_timeline}</span>
+                                </div>
+                                <div class="compare-row">
+                                    <span class="compare-label">Category</span>
+                                    <span class="compare-val">${q.category || 'N/A'}</span>
+                                </div>
+                                <div class="compare-row">
+                                    <span class="compare-label">GST Compliance</span>
+                                    <span class="compare-val"><code style="font-size:11px;">${q.gst_number || 'N/A'}</code></span>
+                                </div>
+                                <div class="compare-row" style="flex-direction:column; align-items:flex-start;">
+                                    <span class="compare-label" style="margin-bottom:4px;">Notes</span>
+                                    <span style="font-size:12px; color:var(--text-light); line-height:1.4;">${q.notes || 'No remarks.'}</span>
+                                </div>
+                                <div class="compare-row">
+                                    <span class="compare-label">Workflow Status</span>
+                                    <span class="status ${statusClass}">${q.status}</span>
+                                </div>
+
+                                <div style="margin-top:20px; text-align:center;">
+                        `;
+
+                        if (q.status === 'submitted' || q.status === 'revised') {
+                            cardHtml += `<button class="btn btn-primary" onclick="submitForApproval(${q.rfq_id}, ${q.id})" style="width:100%;">Submit for Approval</button>`;
+                        } else if (q.status === 'under_review') {
+                            cardHtml += `<span style="font-size:13px; font-weight:600; color:var(--warning-color);">Waiting Manager Review</span>`;
+                        } else if (q.status === 'approved') {
+                            cardHtml += `<button class="btn btn-edit" onclick="generatePurchaseOrder(${q.id})" style="width:100%;">Generate PO</button>`;
+                        } else {
+                            cardHtml += `<span style="font-size:13px; font-weight:600; color:var(--text-light);">Archived</span>`;
+                        }
+
+                        cardHtml += `
+                                </div>
+                            </div>
+                        `;
+                        grid.innerHTML += cardHtml;
+                    });
+                }
+
+                detailDiv.style.display = 'block';
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        // Submit quote to manager
+        async function submitForApproval(rfqId, quotationId) {
+            if (!confirm('Submit this quotation proposal to Management for workflow sign-off?')) return;
+
+            try {
+                const response = await fetch('/api/approvals', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rfq_id: rfqId, quotation_id: quotationId })
+                });
+
+                if (response.ok) {
+                    compareQuotations();
+                    showMessage('Worksheet submitted to manager successfully!', 'success');
+                } else {
+                    showMessage('Failed to submit quote for approval', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error. Try again.', 'error');
+            }
+        }
+
+        // Generate PO from approved quote
+        async function generatePurchaseOrder(quotationId) {
+            try {
+                const response = await fetch('/api/pos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quotation_id: quotationId })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showMessage(`Purchase Order ${data.poNumber} generated successfully!`, 'success');
+                    setTimeout(() => window.location.href = '/purchase-orders', 1500);
+                } else {
+                    const err = await response.json();
+                    showMessage(err.error || 'Failed to generate PO', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error. Try again.', 'error');
+            }
+        }
+
+        // --- VENDOR WORKFLOWS ---
+
+        // Load quotes submitted by vendor
+        async function loadVendorQuotes() {
+            const container = document.getElementById('myQuotesContainer');
+            try {
+                // Fetch all RFQs first, then filter quotes. To make it performant, we can fetch all invoices or load from endpoint.
+                // Let's implement an endpoint or fetch quotations directly. Wait, we have GET /api/quotations or similar?
+                // Let's check how we retrieve vendor's quotations. We can query RFQs or use dashboard data, but to do it cleanly,
+                // let's fetch all RFQs and for each assigned RFQ we check if there's a quotation.
+                const response = await fetch('/api/rfqs');
+                const rfqs = await response.json();
+                
+                let quotesList = [];
+                for (const r of rfqs) {
+                    const detailResp = await fetch(`/api/rfqs/${r.id}`);
+                    const details = await detailResp.json();
+                    if (details.quotation) {
+                        quotesList.push({
+                            rfq_title: r.title,
+                            rfq_deadline: r.deadline,
+                            price: details.quotation.price,
+                            delivery_timeline: details.quotation.delivery_timeline,
+                            notes: details.quotation.notes,
+                            status: details.quotation.status,
+                            created_at: details.quotation.created_at
+                        });
+                    }
+                }
+
+                if (quotesList.length === 0) {
+                    container.innerHTML = '<p class="empty">You have not submitted any quotation proposals yet.</p>';
+                    return;
+                }
+
+                let html = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>RFQ Title</th>
+                                <th>Bid Price</th>
+                                <th>Delivery Timeline</th>
+                                <th>Date Submitted</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                quotesList.forEach(q => {
+                    const statusClass = q.status === 'approved' ? 'status-completed' : (q.status === 'under_review' ? 'status-pending' : 'status-cancelled');
+                    html += `
+                        <tr>
+                            <td><strong>${q.rfq_title}</strong></td>
+                            <td>₹${q.price.toLocaleString('en-IN')}</td>
+                            <td>${q.delivery_timeline}</td>
+                            <td>${new Date(q.created_at).toLocaleDateString('en-IN')}</td>
+                            <td><span class="status ${statusClass}">${q.status}</span></td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (error) {
+                container.innerHTML = '<p class="error">Failed to load quotes.</p>';
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            setTimeout(() => messageDiv.textContent = '', 3000);
+        }
+
+        loadNavbar();
+    </script>
+</body>
+</html>
