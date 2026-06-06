@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VendorBridge - Home</title>
+    <title>VendorBridge - Procurement ERP</title>
     <link rel="stylesheet" href="/css/style.css">
     <style>
         .home-container {
@@ -25,7 +25,7 @@
         }
 
         .hero-section h1 {
-            font-size: 48px;
+            font-size: 44px;
             margin-bottom: 20px;
             font-weight: 700;
         }
@@ -34,24 +34,30 @@
             font-size: 18px;
             margin-bottom: 40px;
             opacity: 0.9;
-            max-width: 600px;
+            max-width: 700px;
+            line-height: 1.6;
         }
 
         .options-container {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            margin-top: 40px;
-            max-width: 800px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 1100px;
         }
 
         .option-card {
             background: white;
-            padding: 40px;
+            padding: 30px 20px;
             border-radius: 10px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
             transition: transform 0.3s, box-shadow 0.3s;
             cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .option-card:hover {
@@ -60,31 +66,37 @@
         }
 
         .option-icon {
-            font-size: 48px;
-            margin-bottom: 20px;
+            font-size: 40px;
+            margin-bottom: 15px;
         }
 
         .option-card h2 {
             color: var(--text-color);
-            margin-bottom: 15px;
-            font-size: 24px;
+            margin-bottom: 10px;
+            font-size: 20px;
+            text-align: center;
         }
 
         .option-card p {
             color: var(--text-light);
-            line-height: 1.6;
-            margin-bottom: 25px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+            font-size: 14px;
+            text-align: center;
         }
 
         .option-card a {
             display: inline-block;
             color: white;
             background-color: var(--primary-color);
-            padding: 12px 30px;
+            padding: 10px 20px;
             border-radius: 6px;
             text-decoration: none;
             font-weight: 600;
+            font-size: 14px;
             transition: background-color 0.3s;
+            width: 100%;
+            text-align: center;
         }
 
         .option-card a:hover {
@@ -116,6 +128,7 @@
             padding: 30px;
             border-radius: 8px;
             text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
 
         .feature-item h3 {
@@ -127,6 +140,7 @@
         .feature-item p {
             color: var(--text-light);
             line-height: 1.6;
+            font-size: 14px;
         }
 
         .feature-icon {
@@ -147,74 +161,96 @@
                 grid-template-columns: 1fr;
                 gap: 20px;
             }
-
-            .features-grid {
-                grid-template-columns: 1fr;
-            }
         }
     </style>
 </head>
 <body>
     <div class="home-container">
         <div class="hero-section">
-            <h1>🌟 Welcome to VendorBridge</h1>
-            <p>Connect vendors with customers. Buy and sell quality products with ease.</p>
+            <h1>🏢 VendorBridge Procurement ERP</h1>
+            <p>A centralized, role-based ERP platform for digitizing procurement. Streamline vendor registration, automate RFQs, compare quotes side-by-side, manage workflow approvals, and generate purchase orders and invoices seamlessly.</p>
             
             <div class="options-container">
+                <!-- Procurement Officer -->
                 <div class="option-card">
-                    <div class="option-icon">🏪</div>
-                    <h2>I'm a Vendor</h2>
-                    <p>Manage your products, receive orders, and grow your business with our vendor portal.</p>
-                    <a href="/login">Login as Vendor</a>
+                    <div>
+                        <div class="option-icon">📋</div>
+                        <h2>Procurement Officer</h2>
+                        <p>Create RFQs, assign vendors, compare quotation worksheets side-by-side, and issue POs and Invoices.</p>
+                    </div>
+                    <a href="/login?role=officer">Officer Access</a>
                 </div>
 
+                <!-- Vendor -->
                 <div class="option-card">
-                    <div class="option-icon">🛍️</div>
-                    <h2>I'm a Buyer</h2>
-                    <p>Browse products from trusted vendors and place orders with ease.</p>
-                    <a href="/shop">Browse & Shop</a>
+                    <div>
+                        <div class="option-icon">🏪</div>
+                        <h2>Vendor Portal</h2>
+                        <p>Register company records, upload pricing quotes, check bidding status, and view received purchase orders.</p>
+                    </div>
+                    <a href="/login?role=vendor">Vendor Access</a>
+                </div>
+
+                <!-- Manager -->
+                <div class="option-card">
+                    <div>
+                        <div class="option-icon">⚖️</div>
+                        <h2>Approving Manager</h2>
+                        <p>Review high-value procurement requests, inspect audit records, and approve or reject bids with remarks.</p>
+                    </div>
+                    <a href="/login?role=manager">Manager Access</a>
+                </div>
+
+                <!-- Admin -->
+                <div class="option-card">
+                    <div>
+                        <div class="option-icon">⚙️</div>
+                        <h2>Administrator</h2>
+                        <p>Manage system access, adjust roles, verify vendor compliance, and track global analytics.</p>
+                    </div>
+                    <a href="/login?role=admin">Admin Access</a>
                 </div>
             </div>
         </div>
 
         <div class="features-section">
-            <h2>Why Choose VendorBridge?</h2>
+            <h2>Core ERP Workflows Supported</h2>
             
             <div class="features-grid">
                 <div class="feature-item">
-                    <div class="feature-icon">🎯</div>
-                    <h3>Easy to Use</h3>
-                    <p>Simple and intuitive interface for both vendors and customers</p>
+                    <div class="feature-icon">🔍</div>
+                    <h3>Vendor Registry</h3>
+                    <p>Track vendor profiles, categories, GST compliance, and review performance indicators.</p>
                 </div>
 
                 <div class="feature-item">
-                    <div class="feature-icon">🔒</div>
-                    <h3>Secure</h3>
-                    <p>Your data and transactions are protected with industry-standard security</p>
-                </div>
-
-                <div class="feature-item">
-                    <div class="feature-icon">⚡</div>
-                    <h3>Fast</h3>
-                    <p>Quick product browsing, ordering, and delivery management</p>
-                </div>
-
-                <div class="feature-item">
-                    <div class="feature-icon">💼</div>
-                    <h3>Professional</h3>
-                    <p>Tools to manage your business professionally and efficiently</p>
+                    <div class="feature-icon">✉️</div>
+                    <h3>RFQ Workflows</h3>
+                    <p>Issue technical requirements, set deadlines, and automatically invite qualified vendors.</p>
                 </div>
 
                 <div class="feature-item">
                     <div class="feature-icon">📊</div>
-                    <h3>Analytics</h3>
-                    <p>Track your sales, orders, and revenue in real-time</p>
+                    <h3>Quote Comparison</h3>
+                    <p>Evaluate pricing and lead-time worksheets side-by-side with lowest-price highlights.</p>
                 </div>
 
                 <div class="feature-item">
-                    <div class="feature-icon">🌐</div>
-                    <h3>Wide Reach</h3>
-                    <p>Connect with customers and vendors from across the region</p>
+                    <div class="feature-icon">🔑</div>
+                    <h3>Structured Approvals</h3>
+                    <p>Enforce strict role-based sign-offs with audit trails and manager remarks.</p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">📜</div>
+                    <h3>PO & Invoice Auto-Gen</h3>
+                    <p>Generate official Purchase Orders and Invoices dynamically with standard GST tax rates.</p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">📈</div>
+                    <h3>Audit Trails & Reports</h3>
+                    <p>Examine chronological activity logs, notifications, monthly trends, and download CSV reports.</p>
                 </div>
             </div>
         </div>

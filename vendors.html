@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VendorBridge - Vendor Management</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .filter-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        @media(max-width: 768px) {
+            .filter-row {
+                grid-template-columns: 1fr;
+            }
+        }
+        .filter-row input, .filter-row select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-family: inherit;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <h1>VendorBridge ERP</h1>
+            </div>
+            <ul class="navbar-menu" id="navbarMenu">
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/vendors" class="active">Vendors</a></li>
+                <li><a href="/rfqs">RFQs</a></li>
+                <li><a href="#" id="logoutBtn">Logout</a></li>
+            </ul>
+        </nav>
+
+        <div class="content">
+            <div class="page-header">
+                <h2>Vendor Registry</h2>
+                <button class="btn btn-primary" id="addVendorBtn" style="width: auto;">Register Vendor</button>
+            </div>
+
+            <!-- Filter Options -->
+            <div class="filter-row">
+                <input type="text" id="searchInput" placeholder="Search by name, company, or email..." oninput="filterVendors()">
+                <select id="categoryFilter" onchange="filterVendors()">
+                    <option value="">All Categories</option>
+                    <option value="IT Hardware">IT Hardware</option>
+                    <option value="Office Supplies">Office Supplies</option>
+                    <option value="Raw Materials">Raw Materials</option>
+                    <option value="Services">Services</option>
+                </select>
+                <select id="statusFilter" onchange="filterVendors()">
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="suspended">Suspended</option>
+                </select>
+            </div>
+
+            <!-- Vendors Registration Modal -->
+            <div id="vendorModal" class="modal hidden">
+                <div class="modal-content" style="max-width: 600px;">
+                    <div class="modal-header">
+                        <h3>Register Vendor Company</h3>
+                        <button class="close-btn" id="closeModal">&times;</button>
+                    </div>
+                    
+                    <form id="vendorForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="vendorName">Full Name (Contact)</label>
+                                <input type="text" id="vendorName" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="vendorEmail">Email Address</label>
+                                <input type="email" id="vendorEmail" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="vendorPassword">Password</label>
+                                <input type="password" id="vendorPassword" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="vendorPhone">Phone Number</label>
+                                <input type="tel" id="vendorPhone" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="companyName">Company Name</label>
+                            <input type="text" id="companyName" required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="gstNumber">GST Number</label>
+                                <input type="text" id="gstNumber" required placeholder="27AAAAA1111A1Z1">
+                            </div>
+                            <div class="form-group">
+                                <label for="categorySelect">Category</label>
+                                <select id="categorySelect" style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit;">
+                                    <option value="IT Hardware">IT Hardware</option>
+                                    <option value="Office Supplies">Office Supplies</option>
+                                    <option value="Raw Materials">Raw Materials</option>
+                                    <option value="Services">Services</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vendorAddress">Address</label>
+                            <input type="text" id="vendorAddress">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="vendorCity">City</label>
+                                <input type="text" id="vendorCity">
+                            </div>
+                            <div class="form-group">
+                                <label for="vendorState">State</label>
+                                <input type="text" id="vendorState">
+                            </div>
+                            <div class="form-group">
+                                <label for="vendorPincode">Pincode</label>
+                                <input type="text" id="vendorPincode">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" style="margin-top: 15px;">Register Vendor</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div id="vendorsList">
+                <div class="loading">Loading vendor list...</div>
+            </div>
+
+            <div id="message" class="message"></div>
+        </div>
+    </div>
+
+    <script>
+        const modal = document.getElementById('vendorModal');
+        const addVendorBtn = document.getElementById('addVendorBtn');
+        const closeModal = document.getElementById('closeModal');
+        const vendorForm = document.getElementById('vendorForm');
+        const listDiv = document.getElementById('vendorsList');
+
+        addVendorBtn.addEventListener('click', () => {
+            vendorForm.reset();
+            modal.classList.remove('hidden');
+        });
+
+        closeModal.addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+
+        vendorForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const vendorData = {
+                name: document.getElementById('vendorName').value,
+                email: document.getElementById('vendorEmail').value,
+                password: document.getElementById('vendorPassword').value,
+                phone: document.getElementById('vendorPhone').value,
+                company_name: document.getElementById('companyName').value,
+                gst_number: document.getElementById('gstNumber').value,
+                category: document.getElementById('categorySelect').value,
+                address: document.getElementById('vendorAddress').value,
+                city: document.getElementById('vendorCity').value,
+                state: document.getElementById('vendorState').value,
+                pincode: document.getElementById('vendorPincode').value,
+                role: 'vendor'
+            };
+
+            try {
+                const response = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(vendorData)
+                });
+
+                if (response.ok) {
+                    modal.classList.add('hidden');
+                    loadVendors();
+                    showMessage('Vendor registered successfully', 'success');
+                } else {
+                    const err = await response.json();
+                    showMessage(err.error || 'Failed to register vendor', 'error');
+                }
+            } catch (error) {
+                showMessage('Error registering vendor', 'error');
+            }
+        });
+
+        async function loadVendors(category = '', status = '', search = '') {
+            try {
+                let url = `/api/vendors?`;
+                if (category) url += `category=${encodeURIComponent(category)}&`;
+                if (status) url += `status=${encodeURIComponent(status)}&`;
+                if (search) url += `search=${encodeURIComponent(search)}&`;
+
+                const response = await fetch(url);
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const vendors = await response.json();
+                
+                if (vendors.length === 0) {
+                    listDiv.innerHTML = '<p class="empty">No vendors found matching parameters.</p>';
+                    return;
+                }
+
+                let html = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Company</th>
+                                <th>Contact</th>
+                                <th>Category</th>
+                                <th>GST Number</th>
+                                <th>Rating</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                vendors.forEach(v => {
+                    const statusClass = v.status === 'active' ? 'status-completed' : 'status-cancelled';
+                    const toggleActionLabel = v.status === 'active' ? 'Suspend' : 'Activate';
+                    const nextStatus = v.status === 'active' ? 'suspended' : 'active';
+                    const btnClass = v.status === 'active' ? 'btn-danger' : 'btn-edit';
+
+                    html += `
+                        <tr>
+                            <td>
+                                <strong>${v.company_name}</strong><br>
+                                <span style="font-size:12px; color:var(--text-light);">${v.email}</span>
+                            </td>
+                            <td>${v.name}<br><span style="font-size:12px; color:var(--text-light);">${v.phone || ''}</span></td>
+                            <td>${v.category || 'N/A'}</td>
+                            <td><code style="background:#f3f4f6; padding:2px 6px; border-radius:4px; font-size:12px;">${v.gst_number || 'N/A'}</code></td>
+                            <td>⭐ ${v.rating.toFixed(1)}</td>
+                            <td><span class="status ${statusClass}">${v.status}</span></td>
+                            <td>
+                                <button class="btn btn-sm ${btnClass}" onclick="toggleVendorStatus(${v.id}, '${nextStatus}')">${toggleActionLabel}</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                listDiv.innerHTML = html;
+            } catch (error) {
+                listDiv.innerHTML = '<p class="error">Error loading vendors list</p>';
+            }
+        }
+
+        async function toggleVendorStatus(vendorId, newStatus) {
+            if (!confirm(`Are you sure you want to change this vendor's status to ${newStatus}?`)) return;
+
+            try {
+                const response = await fetch(`/api/vendors/${vendorId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (response.ok) {
+                    filterVendors();
+                    showMessage('Vendor status updated successfully', 'success');
+                } else {
+                    showMessage('Failed to update status', 'error');
+                }
+            } catch (error) {
+                showMessage('Error updating status', 'error');
+            }
+        }
+
+        function filterVendors() {
+            const search = document.getElementById('searchInput').value;
+            const category = document.getElementById('categoryFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            loadVendors(category, status, search);
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            setTimeout(() => messageDiv.textContent = '', 3000);
+        }
+
+        // Build navigation menu dynamically
+        async function loadNavbar() {
+            const response = await fetch('/auth/vendor-info');
+            if (response.ok) {
+                const user = await response.json();
+                const menu = document.getElementById('navbarMenu');
+                let linksHtml = `<li><a href="/dashboard">Dashboard</a></li>`;
+                
+                if (user.role === 'officer' || user.role === 'admin') {
+                    linksHtml += `
+                        <li><a href="/vendors" class="active">Vendors</a></li>
+                        <li><a href="/rfqs">RFQs</a></li>
+                        <li><a href="/quotations">Worksheets</a></li>
+                        <li><a href="/purchase-orders">POs</a></li>
+                        <li><a href="/invoice">Invoices</a></li>
+                        <li><a href="/reports">Reports</a></li>
+                        <li><a href="/logs">Audit Logs</a></li>
+                    `;
+                }
+
+                linksHtml += `
+                    <li><a href="/profile">Profile</a></li>
+                    <li><a href="#" id="logoutBtn">Logout</a></li>
+                `;
+                menu.innerHTML = linksHtml;
+
+                document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    await fetch('/auth/logout');
+                    window.location.href = '/login';
+                });
+            }
+        }
+
+        loadNavbar();
+        loadVendors();
+    </script>
+</body>
+</html>

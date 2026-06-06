@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VendorBridge - Reports & Analytics</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        @media(max-width: 900px) {
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .chart-container {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 250px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-top: 20px;
+            position: relative;
+        }
+        .chart-bar-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            max-width: 50px;
+        }
+        .chart-bar {
+            background: linear-gradient(to top, var(--primary-color), var(--secondary-color));
+            width: 100%;
+            border-radius: 4px 4px 0 0;
+            transition: height 0.5s ease-out;
+            position: relative;
+            cursor: pointer;
+        }
+        .chart-bar:hover {
+            opacity: 0.85;
+        }
+        .chart-bar-value {
+            position: absolute;
+            top: -22px;
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--text-color);
+            white-space: nowrap;
+        }
+        .chart-bar-label {
+            font-size: 11px;
+            color: var(--text-light);
+            margin-top: 8px;
+            transform: rotate(-15deg);
+            white-space: nowrap;
+        }
+        .category-row {
+            margin-bottom: 15px;
+        }
+        .category-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        .progress-bar-bg {
+            background-color: #f3f4f6;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            background-color: var(--primary-color);
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease-out;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <h1>VendorBridge ERP</h1>
+            </div>
+            <ul class="navbar-menu" id="navbarMenu">
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/reports" class="active">Reports</a></li>
+                <li><a href="#" id="logoutBtn">Logout</a></li>
+            </ul>
+        </nav>
+
+        <div class="content">
+            <div class="page-header">
+                <h2>Procurement Statistics & Performance Analytics</h2>
+                <a href="/api/analytics/export" class="btn btn-primary" style="width: auto;">📥 Export PO Summary (CSV)</a>
+            </div>
+
+            <!-- Graphs and Distributions -->
+            <div class="analytics-grid">
+                <!-- Monthly Spending Trend -->
+                <div class="panel">
+                    <h3>📈 Monthly Spending Trends</h3>
+                    <div class="chart-container" id="monthlyChart">
+                        <!-- Bar chart rendered dynamically -->
+                    </div>
+                </div>
+
+                <!-- Category Spending Distribution -->
+                <div class="panel">
+                    <h3>🛍️ Spend Distribution by Category</h3>
+                    <div id="categoryProgressContainer" style="margin-top:20px;">
+                        <!-- Category shares loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vendor Performance Rankings -->
+            <div class="panel">
+                <h3>🏆 Vendor Performance Grid</h3>
+                <div id="vendorRankingContainer" style="margin-top: 15px;">
+                    <div class="loading">Loading performance metrics...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadReportsData() {
+            try {
+                const response = await fetch('/api/analytics');
+                const data = await response.json();
+
+                renderMonthlyChart(data.monthlyTrends);
+                renderCategorySummary(data.categorySummary);
+                renderVendorRankings(data.vendorPerformance);
+            } catch (error) {
+                console.error('Failed to load reports:', error);
+            }
+        }
+
+        // Render CSS bar chart
+        function renderMonthlyChart(trends) {
+            const chart = document.getElementById('monthlyChart');
+            chart.innerHTML = '';
+
+            if (trends.length === 0) {
+                chart.innerHTML = '<p class="empty">No PO data available to plot trends.</p>';
+                return;
+            }
+
+            const maxTotal = Math.max(...trends.map(t => t.total), 1);
+
+            trends.forEach(t => {
+                const pct = (t.total / maxTotal) * 100;
+                const formattedVal = t.total >= 1000000 
+                    ? (t.total / 1000000).toFixed(1) + 'M' 
+                    : (t.total >= 1000 ? (t.total / 1000).toFixed(0) + 'K' : t.total);
+
+                const barHtml = `
+                    <div class="chart-bar-wrapper">
+                        <div class="chart-bar" style="height: ${pct * 0.8}%;" title="Total spend: ₹${t.total.toLocaleString('en-IN')}">
+                            <span class="chart-bar-value">₹${formattedVal}</span>
+                        </div>
+                        <span class="chart-bar-label">${t.month}</span>
+                    </div>
+                `;
+                chart.innerHTML += barHtml;
+            });
+        }
+
+        // Render Category Progress Bars
+        function renderCategorySummary(categories) {
+            const container = document.getElementById('categoryProgressContainer');
+            container.innerHTML = '';
+
+            if (categories.length === 0) {
+                container.innerHTML = '<p class="empty">No category spend data available.</p>';
+                return;
+            }
+
+            const totalSpend = categories.reduce((sum, c) => sum + c.total, 0);
+
+            categories.forEach(c => {
+                const pct = totalSpend > 0 ? (c.total / totalSpend) * 100 : 0;
+                const progressColor = c.category === 'IT Hardware' ? 'var(--primary-color)' : (c.category === 'Office Supplies' ? 'var(--warning-color)' : 'var(--success-color)');
+                
+                container.innerHTML += `
+                    <div class="category-row">
+                        <div class="category-meta">
+                            <span>${c.category || 'Other'}</span>
+                            <span style="color:var(--text-light)">₹${c.total.toLocaleString('en-IN')} (${pct.toFixed(1)}%)</span>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width: ${pct}%; background-color: ${progressColor};"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Render Vendor Performance Matrix
+        function renderVendorRankings(vendors) {
+            const container = document.getElementById('vendorRankingContainer');
+            container.innerHTML = '';
+
+            if (vendors.length === 0) {
+                container.innerHTML = '<p class="empty">No vendor records found.</p>';
+                return;
+            }
+
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Vendor Company</th>
+                            <th>Specialization</th>
+                            <th>Compliance Rating</th>
+                            <th class="text-right">Quotes Submitted</th>
+                            <th class="text-right">POs Awarded</th>
+                            <th class="text-right">Total Business Volume</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            vendors.forEach((v, index) => {
+                const stars = '⭐'.repeat(Math.round(v.rating || 5));
+                html += `
+                    <tr>
+                        <td><strong>#${index + 1}</strong></td>
+                        <td><strong>${v.company_name}</strong></td>
+                        <td>${v.category || 'N/A'}</td>
+                        <td><span style="color:#f59e0b;">${stars}</span> (${v.rating.toFixed(1)})</td>
+                        <td class="text-right">${v.quotes_submitted}</td>
+                        <td class="text-right">${v.pos_received}</td>
+                        <td class="text-right" style="font-weight:600; color:var(--primary-color);">₹${v.total_business.toLocaleString('en-IN')}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        // Build navigation menu dynamically
+        async function loadNavbar() {
+            const response = await fetch('/auth/vendor-info');
+            if (response.ok) {
+                const user = await response.json();
+                const menu = document.getElementById('navbarMenu');
+                let linksHtml = `<li><a href="/dashboard">Dashboard</a></li>`;
+                
+                if (user.role === 'officer' || user.role === 'admin') {
+                    linksHtml += `
+                        <li><a href="/vendors">Vendors</a></li>
+                        <li><a href="/rfqs">RFQs</a></li>
+                        <li><a href="/quotations">Worksheets</a></li>
+                        <li><a href="/purchase-orders">POs</a></li>
+                        <li><a href="/invoice">Invoices</a></li>
+                        <li><a href="/reports" class="active">Reports</a></li>
+                        <li><a href="/logs">Audit Logs</a></li>
+                    `;
+                } else if (user.role === 'manager') {
+                    linksHtml += `
+                        <li><a href="/approvals">Approvals</a></li>
+                        <li><a href="/reports" class="active">Reports</a></li>
+                        <li><a href="/logs">Audit Logs</a></li>
+                    `;
+                }
+
+                linksHtml += `
+                    <li><a href="/profile">Profile</a></li>
+                    <li><a href="#" id="logoutBtn">Logout</a></li>
+                `;
+                menu.innerHTML = linksHtml;
+
+                document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    await fetch('/auth/logout');
+                    window.location.href = '/login';
+                });
+            }
+        }
+
+        loadNavbar();
+        loadReportsData();
+    </script>
+</body>
+</html>

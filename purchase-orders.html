@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VendorBridge - Purchase Orders</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <h1>VendorBridge ERP</h1>
+            </div>
+            <ul class="navbar-menu" id="navbarMenu">
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/purchase-orders" class="active">POs</a></li>
+                <li><a href="#" id="logoutBtn">Logout</a></li>
+            </ul>
+        </nav>
+
+        <div class="content">
+            <div class="page-header">
+                <h2>Purchase Orders</h2>
+            </div>
+
+            <!-- List of Purchase Orders -->
+            <div id="poListContainer">
+                <div class="loading">Loading Purchase Orders...</div>
+            </div>
+
+            <!-- Detailed PO View Modal -->
+            <div id="poDetailModal" class="modal hidden">
+                <div class="modal-content" style="max-width: 650px;">
+                    <div class="modal-header">
+                        <h3 id="poDetailTitle">Purchase Order Details</h3>
+                        <button class="close-btn" id="closePoModal">&times;</button>
+                    </div>
+
+                    <div id="poDetailContent" style="margin-bottom: 20px;">
+                        <!-- Dynamically filled -->
+                    </div>
+
+                    <div style="display:flex; gap:10px; justify-content:flex-end;" id="poActionsContainer">
+                        <!-- Invoice action buttons filled dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <div id="message" class="message"></div>
+        </div>
+    </div>
+
+    <script>
+        let userRole = null;
+        let userId = null;
+
+        const poDetailModal = document.getElementById('poDetailModal');
+        document.getElementById('closePoModal').addEventListener('click', () => {
+            poDetailModal.classList.add('hidden');
+        });
+
+        // Load Purchase Orders
+        async function loadPOs() {
+            const container = document.getElementById('poListContainer');
+            try {
+                const response = await fetch('/api/pos');
+                const pos = await response.json();
+
+                if (pos.length === 0) {
+                    container.innerHTML = '<p class="empty">No Purchase Orders generated yet.</p>';
+                    return;
+                }
+
+                let html = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>PO Number</th>
+                                <th>RFQ Subject</th>
+                                ${userRole !== 'vendor' ? '<th>Vendor</th>' : ''}
+                                <th>Issued By</th>
+                                <th>Total Amount</th>
+                                <th>Date Issued</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                pos.forEach(p => {
+                    const statusClass = p.status === 'issued' ? 'status-pending' : 'status-completed';
+                    html += `
+                        <tr>
+                            <td><strong>${p.po_number}</strong></td>
+                            <td>${p.rfq_title}</td>
+                            ${userRole !== 'vendor' ? `<td>${p.vendor_name}</td>` : ''}
+                            <td>${p.officer_name}</td>
+                            <td>₹${p.grand_total.toLocaleString('en-IN')}</td>
+                            <td>${new Date(p.created_at).toLocaleDateString('en-IN')}</td>
+                            <td><span class="status ${statusClass}">${p.status}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="viewPoDetail(${p.id})">Details</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (error) {
+                container.innerHTML = '<p class="error">Failed to load Purchase Orders.</p>';
+            }
+        }
+
+        // View single PO details
+        async function viewPoDetail(poId) {
+            const content = document.getElementById('poDetailContent');
+            const actions = document.getElementById('poActionsContainer');
+            content.innerHTML = '<p class="loading">Loading PO details...</p>';
+            actions.innerHTML = '';
+            poDetailModal.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`/api/pos/${poId}`);
+                const data = await response.json();
+                const p = data.po;
+
+                let itemsHtml = '<ul>';
+                const parsedItems = JSON.parse(p.rfq_items);
+                parsedItems.forEach(i => {
+                    itemsHtml += `<li><strong>${i.name}</strong> (Qty: ${i.qty}) ${i.desc ? ' - ' + i.desc : ''}</li>`;
+                });
+                itemsHtml += '</ul>';
+
+                content.innerHTML = `
+                    <div style="border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:15px;">
+                        <h4 style="font-size:16px; color:var(--primary-color);">${p.po_number}</h4>
+                        <span style="font-size:12px; color:var(--text-light);">Issued on ${new Date(p.created_at).toLocaleDateString('en-IN')}</span>
+                    </div>
+
+                    <p style="margin-bottom:8px;"><strong>RFQ:</strong> ${p.rfq_title}</p>
+                    <p style="margin-bottom:8px;"><strong>Officer In Charge:</strong> ${p.officer_name} (${p.officer_email})</p>
+                    <p style="margin-bottom:8px;"><strong>Vendor Partner:</strong> ${p.vendor_company} (GST: ${p.vendor_gst || 'N/A'})</p>
+                    <p style="margin-bottom:15px;"><strong>Ship To Address:</strong> ${p.vendor_address || ''}, ${p.vendor_city || ''}, ${p.vendor_state || ''} - ${p.vendor_pincode || ''}</p>
+                    
+                    <h5 style="margin-bottom:8px; font-size:14px;">Purchase Order Items</h5>
+                    ${itemsHtml}
+
+                    <div style="margin-top:20px; border-top:1px solid var(--border-color); padding-top:15px; display:flex; flex-direction:column; align-items:flex-end;">
+                        <div>Subtotal: <strong>₹${p.total_amount.toLocaleString('en-IN')}</strong></div>
+                        <div>CGST & SGST (18%): <strong>₹${p.tax_amount.toLocaleString('en-IN')}</strong></div>
+                        <div style="font-size:16px; margin-top:5px; color:var(--success-color);">Grand Total: <strong>₹${p.grand_total.toLocaleString('en-IN')}</strong></div>
+                    </div>
+                `;
+
+                // Configure Action Buttons
+                if (data.invoice) {
+                    actions.innerHTML = `<a href="/invoice?id=${data.invoice.id}" class="btn btn-edit">View Invoice (${data.invoice.invoice_number})</a>`;
+                } else {
+                    // Check if role is vendor or officer
+                    if (userRole === 'vendor' || userRole === 'officer') {
+                        actions.innerHTML = `<button class="btn btn-primary" onclick="generateInvoice(${p.id})">Generate Invoice</button>`;
+                    }
+                }
+            } catch (error) {
+                content.innerHTML = '<p class="error">Failed to load PO details.</p>';
+            }
+        }
+
+        // Generate Invoice from PO
+        async function generateInvoice(poId) {
+            try {
+                const response = await fetch('/api/invoices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ po_id: poId })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    poDetailModal.classList.add('hidden');
+                    loadPOs();
+                    showMessage(`Invoice ${data.invoiceNumber} generated successfully!`, 'success');
+                    setTimeout(() => window.location.href = `/invoice?id=${data.invoiceId}`, 1200);
+                } else {
+                    showMessage('Failed to generate invoice', 'error');
+                }
+            } catch (error) {
+                showMessage('Network error. Try again.', 'error');
+            }
+        }
+
+        // Build navigation menu dynamically
+        async function loadNavbar() {
+            const response = await fetch('/auth/vendor-info');
+            if (response.ok) {
+                const user = await response.json();
+                userRole = user.role;
+                userId = user.id;
+
+                const menu = document.getElementById('navbarMenu');
+                let linksHtml = `<li><a href="/dashboard">Dashboard</a></li>`;
+                
+                if (userRole === 'officer' || userRole === 'admin') {
+                    linksHtml += `
+                        <li><a href="/vendors">Vendors</a></li>
+                        <li><a href="/rfqs">RFQs</a></li>
+                        <li><a href="/quotations">Worksheets</a></li>
+                        <li><a href="/purchase-orders" class="active">POs</a></li>
+                        <li><a href="/invoice">Invoices</a></li>
+                        <li><a href="/reports">Reports</a></li>
+                        <li><a href="/logs">Audit Logs</a></li>
+                    `;
+                } else if (userRole === 'vendor') {
+                    linksHtml += `
+                        <li><a href="/rfqs">RFQs</a></li>
+                        <li><a href="/quotations">My Quotes</a></li>
+                        <li><a href="/purchase-orders" class="active">My POs</a></li>
+                        <li><a href="/invoice">My Invoices</a></li>
+                    `;
+                }
+
+                linksHtml += `
+                    <li><a href="/profile">Profile</a></li>
+                    <li><a href="#" id="logoutBtn">Logout</a></li>
+                `;
+                menu.innerHTML = linksHtml;
+
+                document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    await fetch('/auth/logout');
+                    window.location.href = '/login';
+                });
+
+                loadPOs();
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            setTimeout(() => messageDiv.textContent = '', 3000);
+        }
+
+        loadNavbar();
+    </script>
+</body>
+</html>

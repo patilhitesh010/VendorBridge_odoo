@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VendorBridge - Approval Console</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 25px;
+            gap: 15px;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-light);
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+        .review-panel {
+            background-color: var(--light-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <h1>VendorBridge ERP</h1>
+            </div>
+            <ul class="navbar-menu" id="navbarMenu">
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/approvals" class="active">Approvals</a></li>
+                <li><a href="#" id="logoutBtn">Logout</a></li>
+            </ul>
+        </nav>
+
+        <div class="content">
+            <div class="page-header">
+                <h2>Procurement Approvals Workspace</h2>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('pending')">Pending Approvals</button>
+                <button class="tab-btn" onclick="switchTab('approved')">Approved History</button>
+                <button class="tab-btn" onclick="switchTab('rejected')">Rejected History</button>
+            </div>
+
+            <!-- Approvals Table Container -->
+            <div id="approvalsTableContainer">
+                <div class="loading">Loading approvals...</div>
+            </div>
+
+            <!-- Approval Decision Modal -->
+            <div id="decisionModal" class="modal hidden">
+                <div class="modal-content" style="max-width: 600px;">
+                    <div class="modal-header">
+                        <h3>Review Quotation & RFQ</h3>
+                        <button class="close-btn" id="closeDecisionModal">&times;</button>
+                    </div>
+
+                    <div id="decisionContent">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="review-panel">
+                        <h4>Management Decision Form</h4>
+                        <form id="decisionForm" style="margin-top: 15px;">
+                            <input type="hidden" id="approvalId">
+                            
+                            <div class="form-group">
+                                <label for="decisionRemarks">Decision Remarks / Notes (Required)</label>
+                                <textarea id="decisionRemarks" rows="3" required placeholder="Specify why this is approved/rejected..."></textarea>
+                            </div>
+
+                            <div style="display:flex; gap:15px; margin-top:20px;">
+                                <button type="button" class="btn btn-primary" onclick="submitDecision('approved')" style="background-color:var(--success-color); flex:1;">Approve Proposal</button>
+                                <button type="button" class="btn btn-danger" onclick="submitDecision('rejected')" style="flex:1;">Reject Proposal</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div id="message" class="message"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'pending';
+        const decisionModal = document.getElementById('decisionModal');
+        const decisionForm = document.getElementById('decisionForm');
+
+        document.getElementById('closeDecisionModal').addEventListener('click', () => {
+            decisionModal.classList.add('hidden');
+        });
+
+        function switchTab(tab) {
+            currentTab = tab;
+            // Update UI classes
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(btn => {
+                if (btn.textContent.toLowerCase().includes(tab)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            loadApprovals();
+        }
+
+        async function loadApprovals() {
+            const container = document.getElementById('approvalsTableContainer');
+            container.innerHTML = '<div class="loading">Loading records...</div>';
+
+            try {
+                const response = await fetch(`/api/approvals?status=${currentTab}`);
+                const approvals = await response.json();
+
+                if (approvals.length === 0) {
+                    container.innerHTML = `<p class="empty">No approval records in this category.</p>`;
+                    return;
+                }
+
+                let html = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>RFQ Title</th>
+                                <th>Vendor Bidder</th>
+                                <th>Bid Amount</th>
+                                <th>Timeline</th>
+                                ${currentTab !== 'pending' ? '<th>Manager / Remarks</th>' : ''}
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                approvals.forEach(a => {
+                    html += `
+                        <tr>
+                            <td>#${a.id}</td>
+                            <td><strong>${a.rfq_title}</strong></td>
+                            <td>${a.vendor_name}</td>
+                            <td>₹${a.price.toLocaleString('en-IN')}</td>
+                            <td>${a.delivery_timeline}</td>
+                            ${currentTab !== 'pending' ? `<td><strong>${a.manager_name || 'System'}</strong><br><span style="font-size:12px; color:var(--text-light);">${a.remarks || 'No remarks.'}</span></td>` : ''}
+                            <td>
+                                ${currentTab === 'pending' 
+                                    ? `<button class="btn btn-sm btn-edit" onclick="openReviewModal(${a.id})">Review & Sign-off</button>`
+                                    : `<span class="status ${currentTab === 'approved' ? 'status-completed' : 'status-cancelled'}">${a.status}</span>`
+                                }
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (error) {
+                container.innerHTML = '<p class="error">Error loading approval worksheets.</p>';
+            }
+        }
+
+        async function openReviewModal(approvalId) {
+            const content = document.getElementById('decisionContent');
+            content.innerHTML = '<p class="loading">Loading quotation worksheet details...</p>';
+            document.getElementById('approvalId').value = approvalId;
+            document.getElementById('decisionRemarks').value = '';
+            decisionModal.classList.remove('hidden');
+
+            try {
+                // Fetch approval details
+                const response = await fetch(`/api/approvals?status=pending`);
+                const approvals = await response.json();
+                const a = approvals.find(x => x.id === approvalId);
+
+                if (!a) {
+                    content.innerHTML = '<p class="error">Worksheet record not found.</p>';
+                    return;
+                }
+
+                content.innerHTML = `
+                    <p style="margin-bottom:8px;"><strong>RFQ Reference:</strong> ${a.rfq_title} (ID #${a.rfq_id})</p>
+                    <p style="margin-bottom:8px;"><strong>Vendor Bidder:</strong> ${a.vendor_name}</p>
+                    <p style="margin-bottom:8px;"><strong>Quoted Price:</strong> <span style="font-size:18px; font-weight:bold; color:var(--primary-color);">₹${a.price.toLocaleString('en-IN')}</span></p>
+                    <p style="margin-bottom:8px;"><strong>Delivery Timeline:</strong> ${a.delivery_timeline}</p>
+                    <p style="margin-bottom:15px;"><strong>Bid date:</strong> ${new Date(a.created_at).toLocaleDateString('en-IN')}</p>
+                `;
+            } catch (error) {
+                content.innerHTML = '<p class="error">Failed to load details.</p>';
+            }
+        }
+
+        async function submitDecision(status) {
+            const approvalId = document.getElementById('approvalId').value;
+            const remarks = document.getElementById('decisionRemarks').value;
+
+            if (!remarks) {
+                alert('Please enter decision remarks before submitting.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/approvals/${approvalId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status, remarks })
+                });
+
+                if (response.ok) {
+                    decisionModal.classList.add('hidden');
+                    loadApprovals();
+                    showMessage(`Quotation has been successfully ${status}!`, 'success');
+                } else {
+                    showMessage('Failed to complete decision workflow', 'error');
+                }
+            } catch (error) {
+                showMessage('Error processing decision', 'error');
+            }
+        }
+
+        // Build navigation menu dynamically
+        async function loadNavbar() {
+            const response = await fetch('/auth/vendor-info');
+            if (response.ok) {
+                const user = await response.json();
+                const menu = document.getElementById('navbarMenu');
+                let linksHtml = `<li><a href="/dashboard">Dashboard</a></li>`;
+                
+                if (user.role === 'officer' || user.role === 'admin') {
+                    linksHtml += `
+                        <li><a href="/vendors">Vendors</a></li>
+                        <li><a href="/rfqs">RFQs</a></li>
+                        <li><a href="/quotations">Worksheets</a></li>
+                        <li><a href="/purchase-orders">POs</a></li>
+                        <li><a href="/invoice">Invoices</a></li>
+                        <li><a href="/reports">Reports</a></li>
+                        <li><a href="/logs">Audit Logs</a></li>
+                    `;
+                } else if (user.role === 'manager') {
+                    linksHtml += `
+                        <li><a href="/approvals" class="active">Approvals</a></li>
+                        <li><a href="/reports">Reports</a></li>
+                        <li><a href="/logs">Audit Logs</a></li>
+                    `;
+                }
+
+                linksHtml += `
+                    <li><a href="/profile">Profile</a></li>
+                    <li><a href="#" id="logoutBtn">Logout</a></li>
+                `;
+                menu.innerHTML = linksHtml;
+
+                document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    await fetch('/auth/logout');
+                    window.location.href = '/login';
+                });
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            setTimeout(() => messageDiv.textContent = '', 3000);
+        }
+
+        loadNavbar();
+        loadApprovals();
+    </script>
+</body>
+</html>

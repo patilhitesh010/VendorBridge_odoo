@@ -3,64 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VendorBridge - Vendor Login</title>
+    <title>Vendor Login - VendorBridge</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
-<body>
+<body class="auth-page">
     <div class="auth-container">
-        <div class="auth-box">
-            <h1>VendorBridge</h1>
-            <h2>Vendor Login</h2>
-            
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required>
-                </div>
-                
-                <button type="submit" class="btn btn-primary">Login</button>
-            </form>
-            
-            <p class="auth-link">Don't have an account? <a href="/register">Register here</a></p>
-            <div id="message" class="message"></div>
+        <h1>VendorBridge</h1>
+        <h2>Vendor Portal Login</h2>
+        <div id="message" class="alert hidden"></div>
+        <form action="/auth/login" method="POST" class="auth-form">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn-primary">Login</button>
+        </form>
+        <p>New vendor? <a href="/register">Register your company</a></p>
+        <div class="demo-creds">
+            <p><strong>Demo Credentials:</strong></p>
+            <p>Email: demo@vendorbridge.com</p>
+            <p>Password: password123</p>
         </div>
     </div>
-
     <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const messageDiv = document.getElementById('message');
-            
-            try {
-                const response = await fetch('/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    messageDiv.className = 'message success';
-                    messageDiv.textContent = 'Login successful! Redirecting...';
-                    setTimeout(() => window.location.href = '/dashboard', 1500);
-                } else {
-                    messageDiv.className = 'message error';
-                    messageDiv.textContent = data.error || 'Login failed';
-                }
-            } catch (error) {
-                messageDiv.className = 'message error';
-                messageDiv.textContent = 'Network error. Please try again.';
-            }
-        });
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('registered')) {
+            const msg = document.getElementById('message');
+            msg.textContent = 'Registration successful! Please login.';
+            msg.classList.remove('hidden');
+            msg.classList.add('alert-success');
+        }
     </script>
 </body>
 </html>
