@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VendorBridge - Shop</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .shop-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .shop-header h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .shop-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            padding: 40px;
+            background-color: var(--light-bg);
+            min-height: 100vh;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .product-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .product-details {
+            padding: 20px;
+        }
+
+        .product-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 8px;
+        }
+
+        .product-category {
+            color: var(--primary-color);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .product-description {
+            color: var(--text-light);
+            font-size: 13px;
+            margin-bottom: 12px;
+            line-height: 1.4;
+            height: 40px;
+            overflow: hidden;
+        }
+
+        .product-price {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 12px;
+        }
+
+        .product-quantity {
+            color: var(--text-light);
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+
+        .product-quantity.low {
+            color: var(--danger-color);
+        }
+
+        .buy-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .buy-btn:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .buy-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .no-products {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-light);
+        }
+
+        .cart-badge {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background-color: var(--primary-color);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .cart-badge:hover {
+            transform: scale(1.1);
+        }
+
+        .filters {
+            padding: 20px 40px;
+            background-color: white;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .filter-input {
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .shop-container {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                padding: 20px;
+            }
+
+            .shop-header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="shop-header">
+        <h1>🛍️ VendorBridge Shop</h1>
+        <p>Discover quality products from trusted vendors</p>
+    </div>
+
+    <div class="filters">
+        <input type="text" id="searchInput" class="filter-input" placeholder="Search products...">
+        <input type="text" id="categoryFilter" class="filter-input" placeholder="Filter by category...">
+        <button class="btn btn-sm" onclick="resetFilters()" style="padding: 10px 15px;">Reset Filters</button>
+    </div>
+
+    <div id="productContainer" class="shop-container">
+        <div class="no-products">Loading products...</div>
+    </div>
+
+    <div class="cart-badge" id="cartBadge" style="display: none;" onclick="viewCart()">
+        <span id="cartCount">0</span>
+    </div>
+
+    <script>
+        let cart = [];
+        let allProducts = [];
+
+        async function loadProducts() {
+            try {
+                const response = await fetch('/api/shop/products');
+                const products = await response.json();
+                allProducts = products;
+                displayProducts(products);
+            } catch (error) {
+                console.error('Error loading products:', error);
+                document.getElementById('productContainer').innerHTML = '<div class="no-products">Error loading products</div>';
+            }
+        }
+
+        function displayProducts(products) {
+            const container = document.getElementById('productContainer');
+            
+            if (products.length === 0) {
+                container.innerHTML = '<div class="no-products">No products available</div>';
+                return;
+            }
+
+            let html = '';
+            products.forEach(product => {
+                const outOfStock = product.quantity === 0;
+                html += `
+                    <div class="product-card">
+                        <div class="product-image">
+                            ${product.image_url ? `<img src="${product.image_url}" style="width:100%; height:100%; object-fit:cover;">` : 'Product Image'}
+                        </div>
+                        <div class="product-details">
+                            <div class="product-category">${product.category}</div>
+                            <div class="product-name">${product.name}</div>
+                            <div class="product-description">${product.description || 'Quality product'}</div>
+                            <div class="product-price">₹${product.price}</div>
+                            <div class="product-quantity ${product.quantity < 10 ? 'low' : ''}">
+                                Stock: ${product.quantity} ${product.quantity < 10 ? '(Low)' : ''}
+                            </div>
+                            <button class="buy-btn" ${outOfStock ? 'disabled' : ''} onclick="addToCart(${product.id}, '${product.name}', ${product.price}, ${product.vendor_id})">
+                                ${outOfStock ? 'Out of Stock' : 'Add to Cart'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function addToCart(productId, name, price, vendorId) {
+            cart.push({ productId, name, price, vendorId, quantity: 1 });
+            updateCartBadge();
+            showMessage('Product added to cart!', 'success');
+        }
+
+        function updateCartBadge() {
+            const badge = document.getElementById('cartBadge');
+            const count = document.getElementById('cartCount');
+            if (cart.length > 0) {
+                badge.style.display = 'flex';
+                count.textContent = cart.length;
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function viewCart() {
+            if (cart.length === 0) {
+                alert('Your cart is empty');
+                return;
+            }
+            sessionStorage.setItem('cart', JSON.stringify(cart));
+            window.location.href = '/checkout';
+        }
+
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const search = e.target.value.toLowerCase();
+            const filtered = allProducts.filter(p => 
+                p.name.toLowerCase().includes(search) || 
+                p.description.toLowerCase().includes(search)
+            );
+            displayProducts(filtered);
+        });
+
+        document.getElementById('categoryFilter').addEventListener('input', (e) => {
+            const category = e.target.value.toLowerCase();
+            const filtered = allProducts.filter(p => 
+                p.category.toLowerCase().includes(category)
+            );
+            displayProducts(filtered);
+        });
+
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('categoryFilter').value = '';
+            displayProducts(allProducts);
+        }
+
+        function showMessage(text, type) {
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+            msg.textContent = text;
+            msg.style.position = 'fixed';
+            msg.style.top = '20px';
+            msg.style.right = '20px';
+            msg.style.zIndex = '9999';
+            document.body.appendChild(msg);
+            setTimeout(() => msg.remove(), 3000);
+        }
+
+        loadProducts();
+    </script>
+</body>
+</html>

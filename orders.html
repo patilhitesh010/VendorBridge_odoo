@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VendorBridge - Orders</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <h1>VendorBridge</h1>
+            </div>
+            <ul class="navbar-menu">
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/products">Products</a></li>
+                <li><a href="/orders" class="active">Orders</a></li>
+                <li><a href="/profile">Profile</a></li>
+                <li><a href="#" id="logoutBtn">Logout</a></li>
+            </ul>
+        </nav>
+
+        <div class="content">
+            <h2>My Orders</h2>
+
+            <div id="ordersContainer" class="orders-container">
+                <div class="loading">Loading orders...</div>
+            </div>
+
+            <div id="message" class="message"></div>
+        </div>
+    </div>
+
+    <script>
+        async function loadOrders() {
+            try {
+                const response = await fetch('/api/orders');
+                if (response.status === 401) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                const orders = await response.json();
+                const container = document.getElementById('ordersContainer');
+
+                if (orders.length === 0) {
+                    container.innerHTML = '<p class="empty">No orders yet.</p>';
+                    return;
+                }
+
+                let html = '<table><thead><tr><th>Order ID</th><th>Buyer Name</th><th>Buyer Email</th><th>Total Amount</th><th>Quantity</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+                
+                orders.forEach(order => {
+                    const statusClass = order.status === 'pending' ? 'status-pending' : 'status-completed';
+                    html += `<tr>
+                        <td>#${order.id}</td>
+                        <td>${order.buyer_name}</td>
+                        <td>${order.buyer_email}</td>
+                        <td>₹${order.total_amount}</td>
+                        <td>${order.quantity}</td>
+                        <td><span class="status ${statusClass}">${order.status}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="viewOrder(${order.id})">View</button>
+                            <button class="btn btn-sm btn-update" onclick="updateStatus(${order.id})">Update</button>
+                        </td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                container.innerHTML = html;
+            } catch (error) {
+                document.getElementById('ordersContainer').innerHTML = '<p class="error">Error loading orders</p>';
+            }
+        }
+
+        async function viewOrder(orderId) {
+            try {
+                const response = await fetch(`/api/orders/${orderId}`);
+                const order = await response.json();
+
+                let itemsHtml = '';
+                if (order.items && order.items.length > 0) {
+                    order.items.forEach(item => {
+                        itemsHtml += `<tr><td>Product ${item.product_id}</td><td>${item.quantity}</td><td>₹${item.price}</td></tr>`;
+                    });
+                }
+
+                const details = `
+                    <h4>Order #${order.id}</h4>
+                    <p><strong>Buyer:</strong> ${order.buyer_name} (${order.buyer_email})</p>
+                    <p><strong>Phone:</strong> ${order.buyer_phone}</p>
+                    <p><strong>Delivery Address:</strong> ${order.delivery_address}</p>
+                    <p><strong>Total Amount:</strong> ₹${order.total_amount}</p>
+                    <p><strong>Status:</strong> ${order.status}</p>
+                    <h5>Items:</h5>
+                    <table><thead><tr><th>Product</th><th>Quantity</th><th>Price</th></tr></thead><tbody>${itemsHtml}</tbody></table>
+                `;
+                
+                alert(details);
+            } catch (error) {
+                showMessage('Error loading order details', 'error');
+            }
+        }
+
+        async function updateStatus(orderId) {
+            const newStatus = prompt('Enter new status (pending/processing/completed/cancelled):', '');
+            if (!newStatus) return;
+
+            try {
+                const response = await fetch(`/api/orders/${orderId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (response.ok) {
+                    loadOrders();
+                    showMessage('Order status updated successfully', 'success');
+                } else {
+                    showMessage('Failed to update order status', 'error');
+                }
+            } catch (error) {
+                showMessage('Error updating order status', 'error');
+            }
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            setTimeout(() => messageDiv.textContent = '', 3000);
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            try {
+                await fetch('/auth/logout');
+                window.location.href = '/login';
+            } catch (error) {
+                console.error('Error logging out:', error);
+            }
+        });
+
+        loadOrders();
+    </script>
+</body>
+</html>

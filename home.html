@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VendorBridge - Home</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .home-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hero-section {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 80px 40px;
+            text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hero-section h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .hero-section p {
+            font-size: 18px;
+            margin-bottom: 40px;
+            opacity: 0.9;
+            max-width: 600px;
+        }
+
+        .options-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-top: 40px;
+            max-width: 800px;
+        }
+
+        .option-card {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .option-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .option-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .option-card h2 {
+            color: var(--text-color);
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+
+        .option-card p {
+            color: var(--text-light);
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+
+        .option-card a {
+            display: inline-block;
+            color: white;
+            background-color: var(--primary-color);
+            padding: 12px 30px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background-color 0.3s;
+        }
+
+        .option-card a:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .features-section {
+            background-color: var(--light-bg);
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        .features-section h2 {
+            color: var(--text-color);
+            margin-bottom: 40px;
+            font-size: 32px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-item {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .feature-item h3 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+
+        .feature-item p {
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+
+        .feature-icon {
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .hero-section {
+                padding: 60px 20px;
+            }
+
+            .hero-section h1 {
+                font-size: 32px;
+            }
+
+            .options-container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="home-container">
+        <div class="hero-section">
+            <h1>🌟 Welcome to VendorBridge</h1>
+            <p>Connect vendors with customers. Buy and sell quality products with ease.</p>
+            
+            <div class="options-container">
+                <div class="option-card">
+                    <div class="option-icon">🏪</div>
+                    <h2>I'm a Vendor</h2>
+                    <p>Manage your products, receive orders, and grow your business with our vendor portal.</p>
+                    <a href="/login">Login as Vendor</a>
+                </div>
+
+                <div class="option-card">
+                    <div class="option-icon">🛍️</div>
+                    <h2>I'm a Buyer</h2>
+                    <p>Browse products from trusted vendors and place orders with ease.</p>
+                    <a href="/shop">Browse & Shop</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="features-section">
+            <h2>Why Choose VendorBridge?</h2>
+            
+            <div class="features-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Easy to Use</h3>
+                    <p>Simple and intuitive interface for both vendors and customers</p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Secure</h3>
+                    <p>Your data and transactions are protected with industry-standard security</p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Fast</h3>
+                    <p>Quick product browsing, ordering, and delivery management</p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">💼</div>
+                    <h3>Professional</h3>
+                    <p>Tools to manage your business professionally and efficiently</p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">📊</div>
+                    <h3>Analytics</h3>
+                    <p>Track your sales, orders, and revenue in real-time</p>
+                </div>
+
+                <div class="feature-item">
+                    <div class="feature-icon">🌐</div>
+                    <h3>Wide Reach</h3>
+                    <p>Connect with customers and vendors from across the region</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

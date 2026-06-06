@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VendorBridge - Checkout</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .checkout-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .checkout-header {
+            margin-bottom: 40px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+
+        .checkout-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        .checkout-section {
+            background-color: var(--light-bg);
+            padding: 30px;
+            border-radius: 10px;
+        }
+
+        .checkout-section h2 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        .order-summary {
+            background-color: white;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+
+        .order-item:last-child {
+            border-bottom: none;
+        }
+
+        .order-total {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-top: 2px solid var(--primary-color);
+            margin-top: 15px;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--primary-color);
+        }
+
+        .order-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-light);
+        }
+
+        .order-empty a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .checkout-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .vendor-section {
+            background-color: white;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .vendor-name {
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .vendor-items {
+            font-size: 13px;
+            color: var(--text-light);
+        }
+
+        .back-to-shop {
+            margin-bottom: 20px;
+        }
+
+        .back-to-shop a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .back-to-shop a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="checkout-container">
+        <div class="checkout-header">
+            <h1>🛒 Checkout</h1>
+            <div class="back-to-shop">
+                <a href="/shop">← Continue Shopping</a>
+            </div>
+        </div>
+
+        <div class="checkout-content">
+            <!-- Buyer Information -->
+            <div class="checkout-section">
+                <h2>Buyer Information</h2>
+                
+                <form id="checkoutForm">
+                    <div class="form-group">
+                        <label for="buyerName">Full Name *</label>
+                        <input type="text" id="buyerName" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="buyerEmail">Email *</label>
+                        <input type="email" id="buyerEmail" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="buyerPhone">Phone Number *</label>
+                        <input type="tel" id="buyerPhone" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="deliveryAddress">Delivery Address *</label>
+                        <textarea id="deliveryAddress" rows="4" required placeholder="Enter your full delivery address"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="city">City *</label>
+                            <input type="text" id="city" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="state">State *</label>
+                            <input type="text" id="state" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pincode">Pincode *</label>
+                        <input type="text" id="pincode" required>
+                    </div>
+
+                    <div id="message" class="message"></div>
+
+                    <button type="submit" class="btn btn-primary" style="margin-top: 20px;">Place Order</button>
+                </form>
+            </div>
+
+            <!-- Order Summary -->
+            <div class="checkout-section">
+                <h2>Order Summary</h2>
+                
+                <div id="orderSummary" class="order-summary">
+                    <div class="order-empty">
+                        <p>Your cart is empty</p>
+                        <a href="/shop">Continue Shopping</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let cartItems = [];
+
+        function loadCart() {
+            const cart = sessionStorage.getItem('cart');
+            if (!cart) {
+                document.getElementById('checkoutForm').style.display = 'none';
+                return;
+            }
+
+            cartItems = JSON.parse(cart);
+            displayOrderSummary();
+        }
+
+        function displayOrderSummary() {
+            const summary = document.getElementById('orderSummary');
+            
+            if (cartItems.length === 0) {
+                summary.innerHTML = '<div class="order-empty"><p>Your cart is empty</p><a href="/shop">Continue Shopping</a></div>';
+                return;
+            }
+
+            // Group by vendor
+            const vendorGroups = {};
+            cartItems.forEach(item => {
+                if (!vendorGroups[item.vendorId]) {
+                    vendorGroups[item.vendorId] = [];
+                }
+                vendorGroups[item.vendorId].push(item);
+            });
+
+            let totalPrice = 0;
+            let html = '';
+
+            Object.entries(vendorGroups).forEach(([vendorId, items]) => {
+                let vendorTotal = 0;
+                let itemsHtml = '';
+                
+                items.forEach(item => {
+                    const itemTotal = item.price * item.quantity;
+                    vendorTotal += itemTotal;
+                    totalPrice += itemTotal;
+                    itemsHtml += `
+                        <div class="order-item">
+                            <span>${item.name} × ${item.quantity}</span>
+                            <span>₹${itemTotal.toFixed(2)}</span>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    <div class="vendor-section">
+                        <div class="vendor-name">Vendor ID: ${vendorId}</div>
+                        <div class="vendor-items">
+                            ${itemsHtml}
+                            <div class="order-item" style="font-weight: 600; margin-top: 10px;">
+                                <span>Subtotal</span>
+                                <span>₹${vendorTotal.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `
+                <div class="order-total">
+                    <span>Total Amount</span>
+                    <span>₹${totalPrice.toFixed(2)}</span>
+                </div>
+            `;
+
+            summary.innerHTML = html;
+        }
+
+        document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (cartItems.length === 0) {
+                showMessage('Your cart is empty', 'error');
+                return;
+            }
+
+            const buyerName = document.getElementById('buyerName').value;
+            const buyerEmail = document.getElementById('buyerEmail').value;
+            const buyerPhone = document.getElementById('buyerPhone').value;
+            const deliveryAddress = document.getElementById('deliveryAddress').value;
+            const city = document.getElementById('city').value;
+            const state = document.getElementById('state').value;
+            const pincode = document.getElementById('pincode').value;
+
+            // Group by vendor and create orders for each
+            const vendorGroups = {};
+            cartItems.forEach(item => {
+                if (!vendorGroups[item.vendorId]) {
+                    vendorGroups[item.vendorId] = [];
+                }
+                vendorGroups[item.vendorId].push(item);
+            });
+
+            try {
+                const messageDiv = document.getElementById('message');
+                let successCount = 0;
+
+                for (const [vendorId, items] of Object.entries(vendorGroups)) {
+                    const orderData = {
+                        vendor_id: parseInt(vendorId),
+                        buyer_name: buyerName,
+                        buyer_email: buyerEmail,
+                        buyer_phone: buyerPhone,
+                        delivery_address: `${deliveryAddress}, ${city}, ${state} - ${pincode}`,
+                        items: items.map(item => ({ product_id: item.productId, quantity: item.quantity }))
+                    };
+
+                    const response = await fetch('/api/orders', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(orderData)
+                    });
+
+                    if (response.ok) {
+                        successCount++;
+                    }
+                }
+
+                if (successCount === Object.keys(vendorGroups).length) {
+                    messageDiv.className = 'message success';
+                    messageDiv.textContent = 'Order placed successfully! Redirecting to shop...';
+                    sessionStorage.removeItem('cart');
+                    setTimeout(() => {
+                        window.location.href = '/shop?orderSuccess=true';
+                    }, 2000);
+                } else {
+                    messageDiv.className = 'message error';
+                    messageDiv.textContent = 'Some orders failed. Please try again.';
+                }
+            } catch (error) {
+                const messageDiv = document.getElementById('message');
+                messageDiv.className = 'message error';
+                messageDiv.textContent = 'Error placing order. Please try again.';
+                console.error('Error:', error);
+            }
+        });
+
+        loadCart();
+    </script>
+</body>
+</html>
