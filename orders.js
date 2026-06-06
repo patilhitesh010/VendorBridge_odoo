@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { db } = require('../db/init');
+const { db } = require('./init');
 
 // Get all orders for the logged-in vendor
 router.get('/list', (req, res) => {

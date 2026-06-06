@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { db } = require('../db/init');
+const { db } = require('./init');
 
 router.get('/stats', (req, res) => {
     if (!req.session.vendorId) return res.status(401).json({ error: 'Unauthorized' });
